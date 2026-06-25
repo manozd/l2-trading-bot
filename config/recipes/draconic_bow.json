@@ -181,6 +181,11 @@
                 }
               ]
             }
+          },
+          {
+            "item_id": "mithril_ore",
+            "search_name": "Mithril Ore",
+            "qty": 5
           }
         ]
       }

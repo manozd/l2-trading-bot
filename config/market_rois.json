@@ -3,9 +3,9 @@
   "monitor": 1,
   "regions": {
     "market_window": {
-      "left": 592,
+      "left": 591,
       "top": 289,
-      "width": 351,
+      "width": 352,
       "height": 404
     }
   }

@@ -150,9 +150,15 @@ class CraftCostReport:
     lines: list[CostLine]
     missing_prices: list[str]
     finished_bow_buy_price: int | None = None
+    convenience_lines: list[CostLine] | None = None
+    convenience_material_cost: int = 0
+    convenience_cost_per_attempt: int = 0
+    convenience_expected_cost_per_success: int = 0
+    convenience_premium_pct: float = 0.0
+    buy_premium_threshold: float = 0.20
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        out: dict[str, Any] = {
             "recipe_id": self.recipe_id,
             "recipe_name": self.recipe_name,
             "success_rate": self.success_rate,
@@ -163,4 +169,14 @@ class CraftCostReport:
             "finished_bow_buy_price": self.finished_bow_buy_price,
             "missing_prices": self.missing_prices,
             "lines": [ln.to_dict() for ln in self.lines],
+            "buy_premium_threshold": self.buy_premium_threshold,
         }
+        if self.convenience_lines is not None:
+            out["convenience"] = {
+                "material_cost": self.convenience_material_cost,
+                "cost_per_attempt": self.convenience_cost_per_attempt,
+                "expected_cost_per_success": self.convenience_expected_cost_per_success,
+                "premium_pct_vs_min": self.convenience_premium_pct,
+                "lines": [ln.to_dict() for ln in self.convenience_lines],
+            }
+        return out
