@@ -24,7 +24,13 @@ from market.craft.match import (
     pick_result_row,
     visual_click_row,
 )
-from market.craft.models import MaterialPrice
+from market.craft.models import (
+    AVAILABILITY_AVAILABLE,
+    AVAILABILITY_INSUFFICIENT_QTY,
+    AVAILABILITY_NOT_ON_MARKET,
+    AVAILABILITY_SCAN_UNCERTAIN,
+    MaterialPrice,
+)
 from market.full_list_parser import MarketRow, parse_page_rows
 from market.input_ctl import smooth_move_to
 from market.ocr_engine import get_ocr_engine
@@ -34,6 +40,7 @@ from market.pico_hid import PicoHidSerial
 from market.run_control import RunControl, StopRequested, check_stop, sleep_checked
 from market.search import park_cursor_for_ocr, press_back_button, submit_search_query
 from market.ui_layout import search_results_row_click_xy
+from market.vendor_page_parser import parse_vendor_page_rows
 
 MAX_VENDOR_PAGES = 15
 MAX_SEARCH_RESULT_PAGES = 8
@@ -255,7 +262,35 @@ def _summarize_search_result_row(
         listing_count=1,
         source="search_results",
         scanned_at=scanned_at,
+        availability=AVAILABILITY_AVAILABLE,
+        cached_unit_price_adena=int(row.price_adena) if row.price_adena is not None else None,
     )
+
+
+def ocr_vendor_listings_once(
+    *,
+    roi_path: Path,
+    run_control: RunControl | None = None,
+) -> list[dict]:
+    """OCR the current vendor list screen once — no pagination clicks."""
+    cfg = load_market_roi_config(roi_path)
+    market = cfg.require(REGION_MARKET_WINDOW)
+    back = cfg.require(REGION_BACK_BUTTON)
+    ocr = get_ocr_engine()
+
+    if run_control and run_control.should_stop():
+        raise StopRequested()
+    park_cursor_for_ocr(back=back, settle_s=0.04, move_duration_s=0.08)
+    frame = grab_screen_rect(market.left, market.top, market.width, market.height)
+    rows = parse_vendor_page_rows(frame.bgr, page=1, ocr=ocr)
+    scanned_at = datetime.now(timezone.utc).isoformat()
+    out: list[dict] = []
+    for row in rows:
+        record = dict(row)
+        record["scanned_at"] = scanned_at
+        record["vendor_page"] = 1
+        out.append(record)
+    return out
 
 
 def collect_vendor_listings(
@@ -268,6 +303,8 @@ def collect_vendor_listings(
     run_control: RunControl | None = None,
 ) -> list[dict]:
     """OCR vendor list after opening a search-result row."""
+    if max_pages <= 1:
+        return ocr_vendor_listings_once(roi_path=roi_path, run_control=run_control)
     cfg = load_market_roi_config(roi_path)
     market = cfg.require(REGION_MARKET_WINDOW)
     next_btn = cfg.require(REGION_NEXT_PAGE)
@@ -294,18 +331,18 @@ def collect_vendor_listings(
 
         indicator = read_page_indicator(frame.bgr, ocr)
         page_num = indicator.current if indicator else page_i
-        rows = parse_page_rows(frame.bgr, page=page_num, ocr=ocr)
+        vendor_rows = parse_vendor_page_rows(frame.bgr, page=page_num, ocr=ocr)
 
         page_stock = 0
         page_all_known = True
-        for row in rows:
-            if row.price_adena is None:
+        for row in vendor_rows:
+            if row.get("price_adena") is None:
                 continue
-            if row.units is None:
+            if row.get("units") is None:
                 page_all_known = False
             else:
-                page_stock += int(row.units)
-            record = row.to_dict()
+                page_stock += int(row["units"])
+            record = dict(row)
             record["scanned_at"] = scanned_at
             record["vendor_page"] = page_num
             all_rows.append(record)
@@ -386,6 +423,9 @@ def _summarize_listings(
             search_name=search_name,
             unit_price_adena=None,
             scanned_at=scanned_at,
+            availability=AVAILABILITY_NOT_ON_MARKET,
+            availability_note="vendor list empty or no readable prices",
+            listing_count=0,
         )
 
     need = qty_needed if qty_needed is not None else 1
@@ -401,19 +441,50 @@ def _summarize_listings(
                 listing_count=len(valid),
                 source="vendor_search",
                 scanned_at=scanned_at,
+                availability=AVAILABILITY_AVAILABLE,
+                cached_unit_price_adena=unit_price,
             )
+        stock_known = sum(int(r["units"]) for r in valid if r.get("units") is not None)
+        best = min(valid, key=lambda r: int(r["price_adena"]))
+        best_price = int(best["price_adena"])
+        if stock_known > 0:
+            return MaterialPrice(
+                item_id=item_id,
+                search_name=search_name,
+                unit_price_adena=best_price,
+                vendor=best.get("vendor"),
+                units_available=stock_known,
+                listing_count=len(valid),
+                source="vendor_search",
+                scanned_at=scanned_at,
+                availability=AVAILABILITY_INSUFFICIENT_QTY,
+                availability_note=f"need {need:,}, only {stock_known:,} units on market",
+                cached_unit_price_adena=best_price,
+            )
+        return MaterialPrice(
+            item_id=item_id,
+            search_name=search_name,
+            unit_price_adena=None,
+            scanned_at=scanned_at,
+            availability=AVAILABILITY_NOT_ON_MARKET,
+            availability_note=f"need {need:,}, no listings with known stock",
+            listing_count=len(valid),
+        )
 
     best = min(valid, key=lambda r: int(r["price_adena"]))
     units = best.get("units")
+    best_price = int(best["price_adena"])
     return MaterialPrice(
         item_id=item_id,
         search_name=search_name,
-        unit_price_adena=int(best["price_adena"]),
+        unit_price_adena=best_price,
         vendor=best.get("vendor"),
         units_available=int(units) if units is not None else None,
         listing_count=len(valid),
         source="vendor_search",
         scanned_at=scanned_at,
+        availability=AVAILABILITY_AVAILABLE,
+        cached_unit_price_adena=best_price,
     )
 
 
@@ -480,6 +551,8 @@ def fetch_material_vendor_price(
         unique_queries.append(q)
 
     last_visible: list[MarketRow] = []
+    last_failure_note = "search did not find a matching row"
+    last_failure_kind = AVAILABILITY_SCAN_UNCERTAIN
 
     for query in unique_queries:
         if run_control and run_control.should_stop():
@@ -528,6 +601,12 @@ def fetch_material_vendor_price(
             return price
 
         if picked is None:
+            if visible:
+                last_failure_kind = AVAILABILITY_SCAN_UNCERTAIN
+                last_failure_note = "no row match on a loaded search-results page"
+            else:
+                last_failure_kind = AVAILABILITY_SCAN_UNCERTAIN
+                last_failure_note = "search results empty or not readable"
             print(
                 f"[craft-price] no row match for {search_name!r} "
                 f"(visible: {format_result_rows(visible)})",
@@ -571,7 +650,7 @@ def fetch_material_vendor_price(
             qty_needed=qty_needed,
         )
 
-        if price.unit_price_adena is not None:
+        if price.unit_price_adena is not None and price.availability == AVAILABILITY_AVAILABLE:
             print(
                 f"[craft-price] {search_name!r} → {price.unit_price_adena:,} adena "
                 f"({price.listing_count} listings, best vendor {price.vendor!r})",
@@ -587,9 +666,32 @@ def fetch_material_vendor_price(
             check_stop(run_control)
             return price
 
+        if price.availability == AVAILABILITY_INSUFFICIENT_QTY:
+            print(
+                f"[craft-price] {search_name!r} — insufficient market stock "
+                f"({price.availability_note})",
+                flush=True,
+            )
+            _back_to_search_hub(
+                back=back,
+                pico=pico,
+                back_settle_s=back_settle_s,
+                count=2,
+                run_control=run_control,
+            )
+            check_stop(run_control)
+            return price
+
+        if price.availability == AVAILABILITY_NOT_ON_MARKET:
+            last_failure_kind = AVAILABILITY_NOT_ON_MARKET
+            last_failure_note = price.availability_note or "no vendor listings"
+        else:
+            last_failure_kind = AVAILABILITY_SCAN_UNCERTAIN
+            last_failure_note = "matched row but vendor OCR returned no prices"
+
         print(
-            f"[craft-price] {search_name!r} — no vendor prices on row {click_row} "
-            f"(query {query!r}), trying next query if any",
+            f"[craft-price] {search_name!r} — {last_failure_note} "
+            f"on row {click_row} (query {query!r})",
             flush=True,
         )
         _back_to_search_hub(
@@ -612,4 +714,7 @@ def fetch_material_vendor_price(
         search_name=search_name,
         unit_price_adena=None,
         scanned_at=scanned_at,
+        availability=last_failure_kind,
+        availability_note=last_failure_note,
+        listing_count=0,
     )

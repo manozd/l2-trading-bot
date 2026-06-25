@@ -16,12 +16,28 @@ from market.full_list_parser import parse_page_rows
 from market.input_ctl import smooth_move_to
 from market.ocr_engine import get_ocr_engine
 from market.page_fingerprint import PageFingerprint, fingerprint_page, page_unchanged
-from market.pagination import read_page_indicator
+from market.pagination import PageIndicator, read_page_indicator
 from market.pico_hid import PicoHidSerial
 from market.run_control import RunControl
 from market.search import park_cursor_on_back
 
 EMPTY_PAGE_STOP = 2
+
+
+def _indicator_is_reliable_last(
+    indicator: PageIndicator | None,
+    *,
+    last_reliable_page: int | None = None,
+) -> bool:
+    """True when pagination OCR convincingly shows the final list page."""
+    if indicator is None or not indicator.is_last:
+        return False
+    # ``999/999`` is a frequent OCR false positive on this UI (not the real page count).
+    if indicator.total >= 500:
+        return False
+    if last_reliable_page is not None and indicator.current > last_reliable_page + 5:
+        return False
+    return True
 
 
 def _should_stop_pagination(
@@ -32,13 +48,14 @@ def _should_stop_pagination(
     indicator,
     empty_pages: int,
     rows_this_page: int,
+    last_reliable_page: int | None = None,
 ) -> tuple[bool, str | None]:
     if loop_i <= 1:
         return False, None
     if page_unchanged(prev_fp, cur_fp):
         return True, "duplicate page fingerprint"
-    if indicator and indicator.is_last:
-        return True, "pagination indicator"
+    if _indicator_is_reliable_last(indicator, last_reliable_page=last_reliable_page):
+        return True, f"pagination indicator ({indicator.current}/{indicator.total})"
     # Only treat as empty market when rows were parsed but none had a price.
     if rows_this_page > 0 and empty_pages >= EMPTY_PAGE_STOP:
         return True, f"{empty_pages} consecutive pages without prices"

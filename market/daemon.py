@@ -50,9 +50,11 @@ class DaemonConfig:
     calibrate_delay_s: float = 2.0
     monitor: int | None = None
     live_alpha: float = 0.5
-    bulk_category: str = "equipment"
+    bulk_category: str = "all_items"
     bulk_pages: int = 200
     bulk_page_delay_s: float = 0.45
+    bulk_vendor_page_delay_s: float = 0.2
+    bulk_max_vendor_pages: int = 1
     search_resume: bool = True
     craft_recipes_dir: Path = DEFAULT_RECIPES_DIR
     craft_prices_dir: Path = DEFAULT_CRAFT_PRICES_DIR
@@ -148,6 +150,11 @@ class MarketDaemon:
                 print("[daemon] mode change ignored while running", flush=True)
                 return
             self._mode = "bulk"
+            print(
+                "[daemon] bulk crawl — open full market list, then F12 "
+                "(each item → all vendor pages → back)",
+                flush=True,
+            )
             self._print_status()
             return
 
@@ -192,12 +199,18 @@ class MarketDaemon:
                 SearchScanner(search_cfg, run_control=self._run_control).run()
             elif self._mode == "bulk":
                 wait_before_start(cfg.start_delay_s, tag="bulk")
+                print(
+                    "[daemon] bulk crawl — open the full market list in-game before countdown ends",
+                    flush=True,
+                )
                 bulk_cfg = BulkRunConfig(
                     roi_path=cfg.roi_path,
                     pico_com=cfg.pico_com,
                     category=cfg.bulk_category,
                     pages=cfg.bulk_pages,
                     page_delay_s=cfg.bulk_page_delay_s,
+                    vendor_page_delay_s=cfg.bulk_vendor_page_delay_s,
+                    max_vendor_pages=cfg.bulk_max_vendor_pages,
                     start_delay_s=0.0,
                 )
                 BulkScanner(bulk_cfg, run_control=self._run_control).run()
@@ -322,7 +335,7 @@ class MarketDaemon:
             "    C+1  market window (search / next / back derived automatically)\n"
             "    C+2..4  same as C+1\n"
             "  Mode (while paused):\n"
-            "    M+1  search scan     M+2  bulk scan\n"
+            "    M+1  search scan     M+2  bulk crawl (full list → vendors)\n"
             "    M+3  craft cost — enter item name in dialog\n"
             "  F12  start selected mode / stop run gracefully\n"
             "  Ctrl+C  quit\n",

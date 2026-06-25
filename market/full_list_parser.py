@@ -150,6 +150,20 @@ def _list_bounds(
     return top_skip, max(top_skip + rows_per_page * 8, list_y1)
 
 
+def icon_hash_for_list_row(
+    bgr: np.ndarray,
+    row: int,
+    *,
+    top_frac: float = TOP_FRAC,
+    rows_per_page: int = ROWS_PER_PAGE,
+) -> str:
+    """Icon fingerprint for a fixed list row index (1-based), independent of OCR."""
+    bands = _row_bands(bgr.shape[0], top_frac=top_frac, rows_per_page=rows_per_page)
+    idx = max(0, min(row - 1, len(bands) - 1))
+    y0, y1 = bands[idx]
+    return icon_hash_from_row(bgr[y0:y1, :])
+
+
 def _row_bands(
     height: int,
     *,

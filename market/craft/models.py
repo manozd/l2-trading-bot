@@ -3,7 +3,19 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Literal
+
+AVAILABILITY_AVAILABLE = "available"
+AVAILABILITY_NOT_ON_MARKET = "not_on_market"
+AVAILABILITY_INSUFFICIENT_QTY = "insufficient_qty"
+AVAILABILITY_SCAN_UNCERTAIN = "scan_uncertain"
+
+Availability = Literal[
+    "available",
+    "not_on_market",
+    "insufficient_qty",
+    "scan_uncertain",
+]
 
 
 @dataclass(frozen=True)
@@ -98,6 +110,13 @@ class MaterialPrice:
     listing_count: int = 0
     source: str = "vendor_search"
     scanned_at: str = ""
+    availability: Availability = AVAILABILITY_AVAILABLE
+    availability_note: str = ""
+    cached_unit_price_adena: int | None = None
+
+    @property
+    def price_is_stale(self) -> bool:
+        return self.availability == AVAILABILITY_SCAN_UNCERTAIN and self.unit_price_adena is not None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -109,7 +128,38 @@ class MaterialPrice:
             "listing_count": self.listing_count,
             "source": self.source,
             "scanned_at": self.scanned_at,
+            "availability": self.availability,
+            "availability_note": self.availability_note,
+            "cached_unit_price_adena": self.cached_unit_price_adena,
         }
+
+    @staticmethod
+    def from_dict(data: dict[str, Any]) -> MaterialPrice:
+        unit = data.get("unit_price_adena")
+        availability = str(data.get("availability") or "")
+        if availability not in (
+            AVAILABILITY_AVAILABLE,
+            AVAILABILITY_NOT_ON_MARKET,
+            AVAILABILITY_INSUFFICIENT_QTY,
+            AVAILABILITY_SCAN_UNCERTAIN,
+        ):
+            availability = AVAILABILITY_AVAILABLE if unit is not None else AVAILABILITY_SCAN_UNCERTAIN
+        cached = data.get("cached_unit_price_adena")
+        if cached is None and unit is not None and availability == AVAILABILITY_AVAILABLE:
+            cached = unit
+        return MaterialPrice(
+            item_id=str(data["item_id"]),
+            search_name=str(data.get("search_name", data["item_id"])),
+            unit_price_adena=int(unit) if unit is not None else None,
+            vendor=data.get("vendor"),
+            units_available=data.get("units_available"),
+            listing_count=int(data.get("listing_count") or 0),
+            source=str(data.get("source") or "vendor_search"),
+            scanned_at=str(data.get("scanned_at") or ""),
+            availability=availability,  # type: ignore[arg-type]
+            availability_note=str(data.get("availability_note") or ""),
+            cached_unit_price_adena=int(cached) if cached is not None else None,
+        )
 
 
 @dataclass
@@ -123,6 +173,9 @@ class CostLine:
     buy_price: int | None
     craft_cost: int | None
     children: list[CostLine] = field(default_factory=list)
+    availability: Availability | None = None
+    price_is_stale: bool = False
+    availability_note: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -135,6 +188,9 @@ class CostLine:
             "buy_price": self.buy_price,
             "craft_cost": self.craft_cost,
             "children": [c.to_dict() for c in self.children],
+            "availability": self.availability,
+            "price_is_stale": self.price_is_stale,
+            "availability_note": self.availability_note,
         }
 
 
@@ -149,6 +205,9 @@ class CraftCostReport:
     expected_cost_per_success: int
     lines: list[CostLine]
     missing_prices: list[str]
+    unavailable_items: list[dict[str, Any]] = field(default_factory=list)
+    stale_price_items: list[dict[str, Any]] = field(default_factory=list)
+    materials_complete: bool = True
     finished_bow_buy_price: int | None = None
     convenience_lines: list[CostLine] | None = None
     convenience_material_cost: int = 0
@@ -168,6 +227,9 @@ class CraftCostReport:
             "expected_cost_per_success": self.expected_cost_per_success,
             "finished_bow_buy_price": self.finished_bow_buy_price,
             "missing_prices": self.missing_prices,
+            "unavailable_items": self.unavailable_items,
+            "stale_price_items": self.stale_price_items,
+            "materials_complete": self.materials_complete,
             "lines": [ln.to_dict() for ln in self.lines],
             "buy_premium_threshold": self.buy_premium_threshold,
         }

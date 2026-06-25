@@ -36,6 +36,30 @@ def load_jsonl_rows(path: Path) -> list[dict[str, Any]]:
     return rows
 
 
+TRUSTED_IDENTITY_STATUSES = frozenset({"search_confirmed", "icon_name_confirmed", "matched"})
+
+
+def can_aggregate_price(row: dict[str, Any]) -> bool:
+    """True when a flat listing row is safe to bucket into trusted min-price tables."""
+    if row.get("type") == "bulk_vendor_scan":
+        return False
+    price = row.get("price_adena") or row.get("price")
+    if price is None:
+        return False
+    try:
+        if int(price) <= 0:
+            return False
+    except (TypeError, ValueError):
+        return False
+    status = (row.get("identity") or {}).get("status") or row.get("identity_status")
+    if status is not None and status not in TRUSTED_IDENTITY_STATUSES:
+        return False
+    conf_name = row.get("price_confidence")
+    if conf_name in ("low", "none"):
+        return False
+    return True
+
+
 def aggregate_min_prices(
     rows: list[dict[str, Any]],
     *,
@@ -45,6 +69,8 @@ def aggregate_min_prices(
     buckets: dict[str, dict[str, Any]] = {}
 
     for row in rows:
+        if row.get("type") == "bulk_vendor_scan":
+            continue
         row = apply_catalog(dict(row), catalog)
         price = row.get("price_adena")
         if price is None:

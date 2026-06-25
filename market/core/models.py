@@ -225,16 +225,18 @@ class SearchRunConfig:
 class BulkRunConfig:
     roi_path: Path = DEFAULT_MARKET_ROI_PATH
     pico_com: str = DEFAULT_PICO_COM
-    category: str = "equipment"
+    category: str = "all_items"
     pages: int = 200
     page_delay_s: float = 0.45
+    vendor_page_delay_s: float = 0.2
+    max_vendor_pages: int = 1
     start_delay_s: float = 10.0
     dry_run: bool = False
     save_images: bool = False
-    images_dir: Path = field(default_factory=lambda: _LOGS / "market_equipment_pages")
-    aggregate: bool = True
+    images_dir: Path = field(default_factory=lambda: _LOGS / "market_all_items_pages")
+    aggregate: bool = False
     include_truncated: bool = False
     truncated_items_path: Path = DEFAULT_TRUNCATED_ITEMS_PATH
-    out_jsonl: Path = field(default_factory=lambda: _LOGS / "market_equipment.jsonl")
-    min_json: Path = field(default_factory=lambda: _LOGS / "market_equipment_min.json")
-    min_csv: Path = field(default_factory=lambda: _LOGS / "market_equipment_min.csv")
+    out_jsonl: Path = field(default_factory=lambda: _LOGS / "market_all_items.jsonl")
+    min_json: Path = field(default_factory=lambda: _LOGS / "market_all_items_min.json")
+    min_csv: Path = field(default_factory=lambda: _LOGS / "market_all_items_min.csv")

@@ -3,10 +3,10 @@
   "monitor": 1,
   "regions": {
     "market_window": {
-      "left": 591,
-      "top": 289,
-      "width": 353,
-      "height": 404
+      "left": 592,
+      "top": 290,
+      "width": 351,
+      "height": 403
     }
   }
 }

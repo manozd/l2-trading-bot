@@ -10,7 +10,17 @@ from market.capture_rois import REGION_BACK_BUTTON, REGION_SEARCH_BOX, load_mark
 from market.constants import DEFAULT_PICO_COM
 from market.countdown import wait_before_start
 from market.craft.cost import compute_craft_cost
-from market.craft.models import CostLine, CraftCostReport, MaterialPrice, Recipe, RecipeComponent
+from market.craft.models import (
+    AVAILABILITY_INSUFFICIENT_QTY,
+    AVAILABILITY_NOT_ON_MARKET,
+    AVAILABILITY_SCAN_UNCERTAIN,
+    CostLine,
+    CraftCostReport,
+    MaterialPrice,
+    Recipe,
+    RecipeComponent,
+)
+from market.craft.price_cache import merge_price_into_cache
 from market.craft.recipe_db import collect_material_qty_map, collect_unique_materials, load_recipe_by_id
 from market.craft.vendor_search import (
     CRAFT_BACK_SETTLE_S,
@@ -36,7 +46,7 @@ def load_cached_prices(path: Path) -> dict[str, MaterialPrice]:
     prices: dict[str, MaterialPrice] = {}
     for item_id, raw in (data.get("prices") or {}).items():
         if isinstance(raw, dict):
-            prices[str(item_id)] = MaterialPrice(**raw)
+            prices[str(item_id)] = MaterialPrice.from_dict({**raw, "item_id": str(item_id)})
     return prices
 
 
@@ -62,6 +72,30 @@ def format_adena(n: int | None) -> str:
     if n is None:
         return "-"
     return f"{n:,}"
+
+
+def _format_scan_date(scanned_at: str) -> str:
+    if not scanned_at:
+        return "unknown date"
+    return scanned_at[:10] if len(scanned_at) >= 10 else scanned_at
+
+
+def _line_status_suffix(line: CostLine) -> str:
+    if line.method == "buy" and line.price_is_stale:
+        return f" (cached — scan uncertain{_note_suffix(line.availability_note)})"
+    if line.method == "buy" and line.availability == AVAILABILITY_INSUFFICIENT_QTY:
+        return f" (insufficient stock{_note_suffix(line.availability_note)})"
+    if line.method in ("buy", "missing") and line.availability == AVAILABILITY_NOT_ON_MARKET:
+        return f" (not on market{_note_suffix(line.availability_note)})"
+    if line.method == "missing" and line.availability == AVAILABILITY_SCAN_UNCERTAIN:
+        return f" (scan uncertain{_note_suffix(line.availability_note)})"
+    if line.method == "missing":
+        return " (no price)"
+    return ""
+
+
+def _note_suffix(note: str) -> str:
+    return f": {note}" if note else ""
 
 
 def _buy_vs_craft_note(line: CostLine) -> str:
@@ -123,9 +157,10 @@ def _print_component_plan(
         alt = ""
         if compare_line is not None and compare_line.method != line.method:
             alt = f" [min plan: {compare_line.method.upper()}]"
+        status = _line_status_suffix(line)
         print(
             f"  {line.search_name} x{line.qty}: BUY @ {format_adena(line.buy_price)}/ea"
-            f"{note} → {format_adena(line.total_cost)}{alt}",
+            f"{note}{status} → {format_adena(line.total_cost)}{alt}",
             flush=True,
         )
         return
@@ -155,7 +190,7 @@ def _print_component_plan(
         for child in line.children:
             _print_buy_leaves(child, indent=2, qty_mult=line.qty, show_diy_alt=False)
         return
-    print(f"  {line.search_name} x{line.qty}: MISSING PRICE", flush=True)
+    print(f"  {line.search_name} x{line.qty}: {_missing_label(line)}", flush=True)
 
 
 def _print_component_plan_conv(line: CostLine, *, compare_line: CostLine | None) -> None:
@@ -165,9 +200,10 @@ def _print_component_plan_conv(line: CostLine, *, compare_line: CostLine | None)
         alt = ""
         if compare_line is not None and compare_line.method != line.method:
             alt = f" [min plan: {compare_line.method.upper()}]"
+        status = _line_status_suffix(line)
         print(
             f"  {line.search_name} x{line.qty}: BUY @ {format_adena(line.buy_price)}/ea"
-            f"{note} → {format_adena(line.total_cost)}{alt}",
+            f"{note}{status} → {format_adena(line.total_cost)}{alt}",
             flush=True,
         )
         return
@@ -186,7 +222,20 @@ def _print_component_plan_conv(line: CostLine, *, compare_line: CostLine | None)
         for child in line.children:
             _print_buy_leaves(child, indent=2, qty_mult=line.qty, show_diy_alt=True)
         return
-    print(f"  {line.search_name} x{line.qty}: MISSING PRICE", flush=True)
+    print(f"  {line.search_name} x{line.qty}: {_missing_label(line)}", flush=True)
+
+
+def _missing_label(line: CostLine) -> str:
+    if line.availability == AVAILABILITY_NOT_ON_MARKET:
+        return f"NOT ON MARKET{_note_suffix(line.availability_note)}"
+    if line.availability == AVAILABILITY_SCAN_UNCERTAIN:
+        if line.buy_price is not None:
+            return (
+                f"SCAN UNCERTAIN — using cached {format_adena(line.buy_price)}/ea"
+                f"{_note_suffix(line.availability_note)}"
+            )
+        return f"SCAN UNCERTAIN{_note_suffix(line.availability_note)}"
+    return "NO PRICE"
 
 
 def _collect_plan_diffs(
@@ -267,19 +316,45 @@ def print_craft_report(report: CraftCostReport) -> None:
     print(f"\n=== Craft cost: {report.recipe_name} ===", flush=True)
     print(f"  Success rate:     {report.success_rate * 100:.0f}%", flush=True)
     print(f"  Adena fee:        {format_adena(report.adena_fee)}", flush=True)
-    print(f"  Materials:        {format_adena(report.material_cost)}", flush=True)
+    materials_note = "" if report.materials_complete else " (incomplete — see unavailable below)"
+    print(f"  Materials:        {format_adena(report.material_cost)}{materials_note}", flush=True)
     print(f"  Per attempt:      {format_adena(report.cost_per_attempt)}", flush=True)
-    print(f"  Expected/success: {format_adena(report.expected_cost_per_success)}", flush=True)
+    expected_note = "" if report.materials_complete else " (partial — not all materials buyable)"
+    print(
+        f"  Expected/success: {format_adena(report.expected_cost_per_success)}{expected_note}",
+        flush=True,
+    )
     if report.finished_bow_buy_price is not None:
         print(f"  Buy finished item: {format_adena(report.finished_bow_buy_price)}", flush=True)
-        if report.expected_cost_per_success > 0:
+        if report.expected_cost_per_success > 0 and report.materials_complete:
             if report.finished_bow_buy_price < report.expected_cost_per_success:
                 print("  → Cheaper to BUY finished item than craft", flush=True)
             else:
                 print("  → Cheaper to CRAFT than buy finished item", flush=True)
     else:
         print("  Buy finished item: not available (search failed or not scanned)", flush=True)
-    if report.missing_prices:
+    if report.unavailable_items:
+        print(f"  Unavailable:      {len(report.unavailable_items)} items", flush=True)
+        for item in report.unavailable_items:
+            cached = item.get("cached_unit_price_adena")
+            extra = ""
+            if cached is not None:
+                extra = f", last seen {format_adena(cached)}/ea"
+            print(
+                f"    - {item['search_name']}: {item['availability']}"
+                f"{_note_suffix(str(item.get('note') or ''))}{extra}",
+                flush=True,
+            )
+    if report.stale_price_items:
+        print(f"  Cached / partial: {len(report.stale_price_items)} items", flush=True)
+        for item in report.stale_price_items:
+            when = _format_scan_date(str(item.get("scanned_at") or ""))
+            print(
+                f"    - {item['search_name']}: {format_adena(item.get('unit_price_adena'))}/ea"
+                f" ({when}{_note_suffix(str(item.get('note') or ''))})",
+                flush=True,
+            )
+    elif report.missing_prices:
         print(f"  Missing prices:   {len(report.missing_prices)} items", flush=True)
         for mid in report.missing_prices[:10]:
             print(f"    - {mid}", flush=True)
@@ -437,11 +512,22 @@ class CraftPriceScanner:
                     break
                 except Exception as exc:
                     print(f"[craft-cost] skip {mat.search_name!r}: {exc}", flush=True)
+                    fresh = MaterialPrice(
+                        item_id=mat.item_id,
+                        search_name=mat.search_name,
+                        unit_price_adena=None,
+                        scanned_at=datetime.now(timezone.utc).isoformat(),
+                        availability=AVAILABILITY_SCAN_UNCERTAIN,
+                        availability_note=str(exc),
+                    )
+                    prices[mat.item_id] = merge_price_into_cache(
+                        prices.get(mat.item_id), fresh
+                    )
                     continue
                 if self._run_control and self._run_control.should_stop():
                     print("[craft-cost] stop requested — aborting scan", flush=True)
                     break
-                prices[mat.item_id] = price
+                prices[mat.item_id] = merge_price_into_cache(prices.get(mat.item_id), price)
 
             if self.include_finished_bow and not (self._run_control and self._run_control.should_stop()):
                 print(f"[craft-cost] finished item {recipe.search_name!r}", flush=True)
@@ -461,17 +547,24 @@ class CraftPriceScanner:
                         fast=True,
                         run_control=self._run_control,
                     )
-                    if bow_price.unit_price_adena is not None:
+                    if bow_price.unit_price_adena is not None and bow_price.availability == "available":
                         finished_price = bow_price.unit_price_adena
-                        prices[f"{self.recipe_id}_finished"] = bow_price
+                        prices[f"{self.recipe_id}_finished"] = merge_price_into_cache(
+                            prices.get(f"{self.recipe_id}_finished"), bow_price
+                        )
                         print(
                             f"[craft-cost] finished {recipe.search_name!r} buy price: "
                             f"{finished_price:,} adena",
                             flush=True,
                         )
                     else:
+                        merged = merge_price_into_cache(
+                            prices.get(f"{self.recipe_id}_finished"), bow_price
+                        )
+                        prices[f"{self.recipe_id}_finished"] = merged
                         print(
-                            f"[craft-cost] finished {recipe.search_name!r}: no vendor price found",
+                            f"[craft-cost] finished {recipe.search_name!r}: "
+                            f"{merged.availability}{_note_suffix(merged.availability_note)}",
                             flush=True,
                         )
                 except StopRequested:

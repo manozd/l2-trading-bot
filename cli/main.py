@@ -56,8 +56,11 @@ def _add_run_command(sub: argparse._SubParsersAction) -> None:
     p.add_argument("--delay", type=float, default=10.0, help="Countdown before scan starts (F12)")
     p.add_argument("--calibrate-delay", type=float, default=2.0, help="Seconds before calib overlay")
     p.add_argument("--monitor", type=int, default=None, help="Monitor index (default: from ROI file)")
-    p.add_argument("--bulk-category", type=str, default="equipment")
+    p.add_argument("--bulk-category", type=str, default="all_items")
     p.add_argument("--bulk-pages", type=int, default=200)
+    p.add_argument("--bulk-page-delay", type=float, default=0.45)
+    p.add_argument("--bulk-vendor-page-delay", type=float, default=0.2)
+    p.add_argument("--bulk-max-vendor-pages", type=int, default=1)
     p.add_argument("--no-resume", action="store_true", help="Search: do not skip completed items")
     p.set_defaults(func=cmd_run)
 
@@ -82,12 +85,27 @@ def _add_search_command(sub: argparse._SubParsersAction) -> None:
 
 
 def _add_bulk_command(sub: argparse._SubParsersAction) -> None:
-    p = sub.add_parser("bulk", help="Paginate equipment/full list — discovery, unresolved identity")
+    p = sub.add_parser(
+        "bulk",
+        help="Crawl full market list — open each item's vendors and collect all listings",
+    )
     p.add_argument("--roi-config", type=Path, default=DEFAULT_MARKET_ROI_PATH)
     p.add_argument("--pico-com", type=str, default=DEFAULT_PICO_COM)
-    p.add_argument("--category", type=str, default="equipment")
-    p.add_argument("--pages", type=int, default=200)
-    p.add_argument("--page-delay", type=float, default=0.45)
+    p.add_argument("--category", type=str, default="all_items")
+    p.add_argument("--pages", type=int, default=200, help="Max list pages to crawl")
+    p.add_argument("--page-delay", type=float, default=0.45, help="Delay after list page Next")
+    p.add_argument(
+        "--vendor-page-delay",
+        type=float,
+        default=0.2,
+        help="Delay after vendor page Next",
+    )
+    p.add_argument(
+        "--max-vendor-pages",
+        type=int,
+        default=1,
+        help="Max vendor pages per item (bulk crawl; use higher for full depth)",
+    )
     p.add_argument("--delay", type=float, default=10.0)
     p.add_argument("--dry-run", action="store_true")
     p.add_argument("--save-images", action="store_true")
@@ -141,6 +159,9 @@ def cmd_run(ns: argparse.Namespace) -> None:
         monitor=ns.monitor,
         bulk_category=ns.bulk_category,
         bulk_pages=ns.bulk_pages,
+        bulk_page_delay_s=ns.bulk_page_delay,
+        bulk_vendor_page_delay_s=ns.bulk_vendor_page_delay,
+        bulk_max_vendor_pages=ns.bulk_max_vendor_pages,
         search_resume=not ns.no_resume,
     )
     run_daemon(cfg)
@@ -173,6 +194,8 @@ def cmd_bulk(ns: argparse.Namespace) -> None:
         category=ns.category,
         pages=ns.pages,
         page_delay_s=ns.page_delay,
+        vendor_page_delay_s=ns.vendor_page_delay,
+        max_vendor_pages=ns.max_vendor_pages,
         start_delay_s=ns.delay,
         dry_run=ns.dry_run,
         save_images=ns.save_images,

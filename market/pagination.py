@@ -69,3 +69,77 @@ def read_page_indicator(bgr: np.ndarray, ocr) -> PageIndicator | None:
         if hit is not None:
             return hit
     return None
+
+
+def is_plausible_list_indicator(indicator: PageIndicator | None) -> bool:
+    """Reject common OCR garbage such as ``999/999``."""
+    if indicator is None:
+        return False
+    if indicator.total >= 500:
+        return False
+    return 1 <= indicator.current <= indicator.total
+
+
+def read_page_indicator_robust(bgr: np.ndarray, ocr) -> PageIndicator | None:
+    """Read pagination; retry once on the raw bottom strip if the cropped read fails."""
+    hit = read_page_indicator(bgr, ocr)
+    if is_plausible_list_indicator(hit):
+        return hit
+    h, w = bgr.shape[:2]
+    y0 = int(h * PAGINATION_Y0_FRAC)
+    y1 = max(y0 + 4, int(h * PAGINATION_Y1_FRAC))
+    wide = bgr[y0:y1, int(w * 0.12) : int(w * 0.88)]
+    if wide.size == 0:
+        return hit if is_plausible_list_indicator(hit) else None
+    pil = Image.fromarray(wide).convert("L")
+    pil = pil.resize((max(1, pil.width * 3), max(1, pil.height * 3)), Image.Resampling.LANCZOS)
+    detections = run_ocr(ocr, np.array(pil))
+    texts = [text for _box, text, _score in detections]
+    for blob in (" ".join(texts), *texts):
+        retry = parse_page_indicator_text(blob)
+        if is_plausible_list_indicator(retry):
+            return retry
+    return hit if is_plausible_list_indicator(hit) else None
+
+
+class ListPageTracker:
+    """Track list page by click counter; OCR is logged only, never used to stop."""
+
+    def __init__(self) -> None:
+        self.page: int = 1
+        self.total_hint: int | None = None
+        self._initialized = False
+
+    def resolve(self, indicator: PageIndicator | None, *, loop_i: int) -> int:
+        if is_plausible_list_indicator(indicator):
+            assert indicator is not None
+            if not self._initialized:
+                self.page = indicator.current
+                self._initialized = True
+            elif abs(indicator.current - self.page) <= 2:
+                self.page = indicator.current
+            if self.total_hint is None:
+                self.total_hint = indicator.total
+            elif abs(indicator.total - self.total_hint) <= 3:
+                self.total_hint = indicator.total
+            return self.page
+
+        if not self._initialized:
+            self.page = loop_i
+            self._initialized = True
+        return self.page
+
+    def after_next_click(self) -> None:
+        self.page += 1
+        self._initialized = True
+
+    def ocr_log_suffix(self, indicator: PageIndicator | None) -> str:
+        if indicator is None:
+            hint = f"/{self.total_hint}" if self.total_hint else ""
+            return f"tracked {self.page}{hint} (pagination OCR failed)"
+        if self.total_hint and abs(indicator.total - self.total_hint) > 3:
+            return (
+                f"OCR {indicator.current}/{indicator.total} "
+                f"(tracked {self.page}, total hint {self.total_hint})"
+            )
+        return f"OCR {indicator.current}/{indicator.total} (tracked {self.page})"
