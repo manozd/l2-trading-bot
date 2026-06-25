@@ -249,6 +249,7 @@ class CraftPriceScanner:
                         search_settle_s=self.search_settle_s,
                         back_settle_s=self.back_settle_s,
                         input_mode=self.input_mode,
+                        fast=True,
                         run_control=self._run_control,
                     )
                 except StopRequested:
@@ -277,6 +278,7 @@ class CraftPriceScanner:
                         search_settle_s=self.search_settle_s,
                         back_settle_s=self.back_settle_s,
                         input_mode=self.input_mode,
+                        fast=True,
                         run_control=self._run_control,
                     )
                     if bow_price.unit_price_adena is not None:

@@ -38,13 +38,13 @@ from market.ui_layout import search_results_row_click_xy
 MAX_VENDOR_PAGES = 15
 MAX_SEARCH_RESULT_PAGES = 8
 
-CRAFT_SEARCH_SETTLE_S = 0.45
-CRAFT_BACK_SETTLE_S = 0.45
-CRAFT_PAGE_DELAY_S = 0.3
-CRAFT_ROW_SETTLE_S = 0.45
-CRAFT_VENDOR_SETTLE_S = 0.3
-CRAFT_POST_SEARCH_WAIT_S = 0.55
-CRAFT_RESULTS_RETRY_WAITS_S = (0.0, 0.35, 0.5)
+CRAFT_SEARCH_SETTLE_S = 0.2
+CRAFT_BACK_SETTLE_S = 0.2
+CRAFT_PAGE_DELAY_S = 0.2
+CRAFT_ROW_SETTLE_S = 0.25
+CRAFT_VENDOR_SETTLE_S = 0.2
+CRAFT_POST_SEARCH_WAIT_S = 0.8
+CRAFT_RESULTS_RETRY_WAITS_S = (0.0, 0.25)
 
 
 def _click_search_result_row(
@@ -57,9 +57,9 @@ def _click_search_result_row(
     cx, cy = search_results_row_click_xy(market, row=row)
     print(f"[craft-price] click search row {row} at ({cx}, {cy})", flush=True)
     check_stop(run_control)
-    smooth_move_to(cx, cy, duration_s=0.14, steps=10, sync=True)
-    sleep_checked(0.05, run_control=run_control)
-    pico.click_left_prepare(hold_ms=120, ping=True)
+    smooth_move_to(cx, cy, duration_s=0.1, steps=6, sync=True)
+    sleep_checked(0.03, run_control=run_control)
+    pico.click_left_prepare(hold_ms=100, ping=True)
     sleep_checked(CRAFT_ROW_SETTLE_S, run_control=run_control)
 
 
@@ -406,7 +406,6 @@ def _summarize_listings(
 
 def _back_to_search_hub(
     *,
-    search: RoiRect,
     back: RoiRect,
     pico: PicoHidSerial,
     back_settle_s: float,
@@ -415,9 +414,6 @@ def _back_to_search_hub(
 ) -> None:
     """Press Back ``count`` times to return to the search hub (search bar visible)."""
     check_stop(run_control)
-    cx, cy = search.center_screen()
-    smooth_move_to(cx, cy, duration_s=0.1, steps=6, sync=False)
-    sleep_checked(0.08, run_control=run_control)
     for _ in range(count):
         press_back_button(
             back=back,
@@ -426,7 +422,7 @@ def _back_to_search_hub(
             fast=True,
             run_control=run_control,
         )
-        sleep_checked(0.15, run_control=run_control)
+        sleep_checked(0.08, run_control=run_control)
     if count == 1:
         print("[craft-price] back ×1 — search hub", flush=True)
     else:
@@ -510,7 +506,6 @@ def fetch_material_vendor_price(
                 flush=True,
             )
             _back_to_search_hub(
-                search=search,
                 back=back,
                 pico=pico,
                 back_settle_s=back_settle_s,
@@ -527,7 +522,6 @@ def fetch_material_vendor_price(
                 flush=True,
             )
             _back_to_search_hub(
-                search=search,
                 back=back,
                 pico=pico,
                 back_settle_s=back_settle_s,
@@ -572,7 +566,6 @@ def fetch_material_vendor_price(
                 flush=True,
             )
             _back_to_search_hub(
-                search=search,
                 back=back,
                 pico=pico,
                 back_settle_s=back_settle_s,
@@ -588,7 +581,6 @@ def fetch_material_vendor_price(
             flush=True,
         )
         _back_to_search_hub(
-            search=search,
             back=back,
             pico=pico,
             back_settle_s=back_settle_s,
