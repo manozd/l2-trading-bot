@@ -43,8 +43,21 @@ CRAFT_BACK_SETTLE_S = 0.2
 CRAFT_PAGE_DELAY_S = 0.2
 CRAFT_ROW_SETTLE_S = 0.25
 CRAFT_VENDOR_SETTLE_S = 0.2
-CRAFT_POST_SEARCH_WAIT_S = 0.8
-CRAFT_RESULTS_RETRY_WAITS_S = (0.0, 0.25)
+CRAFT_RESULTS_HUB_RETRY_S = 0.25
+
+
+def _search_results_ready(rows: list[MarketRow]) -> bool:
+    """True when Screen B listings are visible (not the category hub)."""
+    if is_likely_search_hub(rows):
+        return False
+    if filter_search_result_rows(rows):
+        return True
+    for row in rows:
+        if row.price_adena is not None and row.price_adena >= 50:
+            return True
+        if row.vendor and (row.item or row.raw_text):
+            return True
+    return False
 
 
 def _click_search_result_row(
@@ -93,11 +106,11 @@ def _read_search_results_page(
 
     if run_control and run_control.should_stop():
         raise StopRequested()
-    park_cursor_for_ocr(back=back, next_btn=next_btn, on_next=(page_i > 1))
+    park_cursor_for_ocr(back=back, next_btn=next_btn, on_next=(page_i > 1), settle_s=0.04, move_duration_s=0.08)
     frame = grab_screen_rect(market.left, market.top, market.width, market.height)
     indicator = read_page_indicator(frame.bgr, ocr)
-    page_num = indicator.current if indicator else page_i
-    rows = parse_page_rows(frame.bgr, page=page_num, ocr=ocr)
+    # Search hits are often 1–2 rows; row-band fallback OCRs 7 strips and takes ~3–5 s.
+    rows = parse_page_rows(frame.bgr, page=page_i, ocr=ocr, row_fallback=False)
     return rows, indicator
 
 
@@ -192,26 +205,26 @@ def _read_search_results_with_retry(
     pico: PicoHidSerial,
     run_control: RunControl | None = None,
 ) -> tuple[list[MarketRow], PageIndicator | None]:
-    """OCR search results page 1; retry while the category hub is still showing."""
-    rows: list[MarketRow] = []
-    indicator: PageIndicator | None = None
-    for attempt, extra_wait in enumerate(CRAFT_RESULTS_RETRY_WAITS_S):
-        if extra_wait > 0:
-            sleep_checked(extra_wait, run_control=run_control)
-        rows, indicator = _read_search_results_page(
+    """OCR search results page 1; one retry only if the category hub is still showing."""
+    rows, indicator = _read_search_results_page(
+        roi_path=roi_path,
+        pico=pico,
+        page_i=1,
+        run_control=run_control,
+    )
+    if _search_results_ready(rows):
+        return rows, indicator
+
+    if not rows or is_likely_search_hub(rows):
+        sleep_checked(CRAFT_RESULTS_HUB_RETRY_S, run_control=run_control)
+        print("[craft-price] waiting for search-results list …", flush=True)
+        return _read_search_results_page(
             roi_path=roi_path,
             pico=pico,
             page_i=1,
             run_control=run_control,
         )
-        visible = filter_search_result_rows(rows)
-        if visible and not is_likely_search_hub(rows):
-            return rows, indicator
-        if attempt + 1 < len(CRAFT_RESULTS_RETRY_WAITS_S):
-            print(
-                "[craft-price] waiting for search-results list …",
-                flush=True,
-            )
+
     return rows, indicator
 
 
@@ -481,7 +494,6 @@ def fetch_material_vendor_price(
             fast=fast,
             run_control=run_control,
         )
-        sleep_checked(CRAFT_POST_SEARCH_WAIT_S, run_control=run_control)
 
         picked, price_row, visible = _scan_search_results(
             roi_path=roi_path,

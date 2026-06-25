@@ -402,6 +402,7 @@ def parse_page_rows(
     *,
     page: int = 0,
     ocr=None,
+    row_fallback: bool = True,
 ) -> list[MarketRow]:
     """Parse one market window crop into up to 7 rows (full-page OCR, row crop fallback)."""
     if ocr is None:
@@ -411,7 +412,7 @@ def parse_page_rows(
     grouped = _ocr_page_grouped(bgr, ocr)
     rows = _parse_from_grouped_items(grouped, bgr=bgr, bands=bands, page=page)
 
-    if len(rows) < 3:
+    if row_fallback and len(rows) < 3:
         grouped_fb = _ocr_row_crops_grouped(bgr, ocr, scale=2)
         rows_fb = _parse_from_grouped_items(grouped_fb, bgr=bgr, bands=bands, page=page)
         if len(rows_fb) > len(rows):
