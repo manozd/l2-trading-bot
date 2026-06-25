@@ -27,7 +27,7 @@ from market.craft.recipe_db import (
 from market.daemon_prompt import prompt_recipe_name
 from market.items_db import DEFAULT_ITEMS_DB
 from market.roi_calibrate import run_region_calibration
-from market.run_control import RunControl
+from market.run_control import RunControl, StopRequested
 from market.search_input import INPUT_PICO
 from market.services.bulk_scanner import BulkScanner
 from market.services.craft_scanner import CraftPriceScanner, DEFAULT_CRAFT_PRICES_DIR, DEFAULT_RECIPES_DIR
@@ -109,8 +109,16 @@ class MarketDaemon:
             bind("m+1", lambda: self._enqueue("mode:search"), suppress=False),
             bind("m+2", lambda: self._enqueue("mode:bulk"), suppress=False),
             bind("m+3", lambda: self._enqueue("mode:craft"), suppress=False),
-            bind("f12", lambda: self._enqueue("toggle"), suppress=False),
+            bind("f12", lambda: self._on_f12(), suppress=False),
         ]
+
+    def _on_f12(self) -> None:
+        """F12: stop immediately when running (do not wait for queue poll)."""
+        if self._state == "running":
+            print("[daemon] F12 — stop requested …", flush=True)
+            self._run_control.request_stop()
+            return
+        self._enqueue("toggle")
 
     def _enqueue(self, action: str) -> None:
         self._queue.put(action)
@@ -155,7 +163,6 @@ class MarketDaemon:
 
     def _toggle_run(self) -> None:
         if self._state == "running":
-            print("[daemon] F12 — stop after current item/page …", flush=True)
             self._run_control.request_stop()
             return
 
@@ -202,17 +209,22 @@ class MarketDaemon:
                 if not recipe_id:
                     print("[daemon] craft recipe not selected — press M+3 first", flush=True)
                     return
-                wait_before_start(cfg.start_delay_s, tag="craft-cost")
-                CraftPriceScanner(
-                    recipe_id=recipe_id,
-                    roi_path=cfg.roi_path,
-                    pico_com=cfg.pico_com,
-                    recipes_dir=cfg.craft_recipes_dir,
-                    prices_dir=cfg.craft_prices_dir,
-                    start_delay_s=0.0,
-                    fetch=True,
-                    run_control=self._run_control,
-                ).run()
+                try:
+                    wait_before_start(cfg.start_delay_s, tag="craft-cost", run_control=self._run_control)
+                    CraftPriceScanner(
+                        recipe_id=recipe_id,
+                        roi_path=cfg.roi_path,
+                        pico_com=cfg.pico_com,
+                        recipes_dir=cfg.craft_recipes_dir,
+                        prices_dir=cfg.craft_prices_dir,
+                        start_delay_s=0.0,
+                        fetch=True,
+                        run_control=self._run_control,
+                    ).run()
+                except StopRequested:
+                    print("[daemon] run stopped", flush=True)
+        except StopRequested:
+            print("[daemon] run stopped", flush=True)
         except Exception as exc:
             print(f"[daemon] run error: {exc}", flush=True)
 

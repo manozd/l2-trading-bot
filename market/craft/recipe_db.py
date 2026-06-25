@@ -108,3 +108,24 @@ def collect_unique_materials(recipe: Recipe) -> list[RecipeComponent]:
             seen.add(node.item_id)
             out.append(node)
     return out
+
+
+def _accumulate_material_qty(
+    component: RecipeComponent,
+    *,
+    mult: int,
+    totals: dict[str, int],
+) -> None:
+    need = mult * component.qty
+    totals[component.item_id] = totals.get(component.item_id, 0) + need
+    if component.craft:
+        for child in component.craft.components:
+            _accumulate_material_qty(child, mult=need, totals=totals)
+
+
+def collect_material_qty_map(recipe: Recipe) -> dict[str, int]:
+    """Total units of each item_id required for one craft attempt (sums nested tree)."""
+    totals: dict[str, int] = {}
+    for top in recipe.components:
+        _accumulate_material_qty(top, mult=1, totals=totals)
+    return totals

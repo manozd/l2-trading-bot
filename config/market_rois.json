@@ -3,26 +3,26 @@
   "monitor": 1,
   "regions": {
     "market_window": {
-      "left": 777,
-      "top": 381,
-      "width": 351,
-      "height": 404
+      "left": 812,
+      "top": 349,
+      "width": 352,
+      "height": 406
     },
     "next_page": {
-      "left": 979,
-      "top": 731,
-      "width": 15,
-      "height": 14
+      "left": 1014,
+      "top": 699,
+      "width": 14,
+      "height": 15
     },
     "search_box": {
-      "left": 837,
-      "top": 459,
-      "width": 161,
-      "height": 22
+      "left": 874,
+      "top": 428,
+      "width": 158,
+      "height": 23
     },
     "back_button": {
-      "left": 855,
-      "top": 753,
+      "left": 889,
+      "top": 722,
       "width": 198,
       "height": 28
     }

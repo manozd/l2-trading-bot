@@ -8,6 +8,7 @@ from market.capture_rois import RoiRect
 from market.input_ctl import get_cursor_pos, smooth_move_to
 from market.pc_keyboard import paste_search_text, type_search_text
 from market.pico_hid import PicoHidSerial
+from market.run_control import RunControl, check_stop, sleep_checked
 from market.search_input import INPUT_PASTE, INPUT_PC, INPUT_PICO, pico_strips_characters, unsupported_pico_chars
 
 
@@ -46,23 +47,25 @@ def click_roi(
     label: str,
     settle_s: float = 0.35,
     fast: bool = False,
+    run_control: RunControl | None = None,
 ) -> None:
+    check_stop(run_control)
     cx, cy = roi.center_screen()
     if fast:
         smooth_move_to(cx, cy, duration_s=0.1, steps=6, sync=False)
-        time.sleep(0.03)
+        sleep_checked(0.03, run_control=run_control)
         pico.click_left_prepare(hold_ms=100, ping=True)
-        time.sleep(min(settle_s, 0.25))
+        sleep_checked(min(settle_s, 0.25), run_control=run_control)
         return
     before = get_cursor_pos()
     print(f"[search] PC move ({before[0]},{before[1]}) -> ({cx},{cy}) [{label}]", flush=True)
     final = smooth_move_to(cx, cy, duration_s=0.24, steps=18, sync=True, debug=True)
     if abs(final[0] - cx) > 4 or abs(final[1] - cy) > 4:
         print(f"[search] WARNING: cursor did not reach {label}", flush=True)
-    time.sleep(0.08)
+    sleep_checked(0.08, run_control=run_control)
     print(f"[search] Pico CLICK {label}", flush=True)
     pico.click_left_prepare(hold_ms=120, ping=True)
-    time.sleep(settle_s)
+    sleep_checked(settle_s, run_control=run_control)
 
 
 def focus_search_box(
@@ -71,8 +74,16 @@ def focus_search_box(
     *,
     settle_s: float = 0.25,
     fast: bool = False,
+    run_control: RunControl | None = None,
 ) -> None:
-    click_roi(search, pico, label="search box", settle_s=settle_s, fast=fast)
+    click_roi(
+        search,
+        pico,
+        label="search box",
+        settle_s=settle_s,
+        fast=fast,
+        run_control=run_control,
+    )
 
 
 def submit_search_query(
@@ -83,9 +94,17 @@ def submit_search_query(
     settle_s: float = 0.45,
     input_mode: str = INPUT_PICO,
     fast: bool = False,
+    run_control: RunControl | None = None,
 ) -> None:
     """Click search box, enter text, Pico Enter to apply filter."""
-    focus_search_box(search, pico, settle_s=0.2 if fast else 0.25, fast=fast)
+    check_stop(run_control)
+    focus_search_box(
+        search,
+        pico,
+        settle_s=0.2 if fast else 0.25,
+        fast=fast,
+        run_control=run_control,
+    )
 
     if input_mode == INPUT_PASTE:
         print("[search] clipboard set + PC Ctrl+A/V (often blocked in L2 / GameGuard)", flush=True)
@@ -104,15 +123,15 @@ def submit_search_query(
             if pico_strips_characters(query):
                 print("[search] pico typing with SPACE/symbols (requires updated firmware)", flush=True)
             print(f"[search] pico typing {query!r}", flush=True)
-        pico.type_search_text(query)
+        pico.type_search_text(query, run_control=run_control)
         if not fast:
             print("[search] pico typed", flush=True)
 
-    time.sleep(0.15 if fast else 0.28)
+    sleep_checked(0.15 if fast else 0.28, run_control=run_control)
     pico.key_enter()
     if not fast:
         print("[search] pico KEY ENTER", flush=True)
-    time.sleep(settle_s)
+    sleep_checked(settle_s, run_control=run_control)
 
 
 def press_back_button(
@@ -121,8 +140,16 @@ def press_back_button(
     pico: PicoHidSerial,
     settle_s: float = 0.5,
     fast: bool = False,
+    run_control: RunControl | None = None,
 ) -> None:
     """Click Back to leave filtered results before the next search."""
-    click_roi(back, pico, label="back button", settle_s=settle_s, fast=fast)
+    click_roi(
+        back,
+        pico,
+        label="back button",
+        settle_s=settle_s,
+        fast=fast,
+        run_control=run_control,
+    )
     if not fast:
         print("[search] back — ready for next item", flush=True)

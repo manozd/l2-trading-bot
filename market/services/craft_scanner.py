@@ -11,14 +11,14 @@ from market.constants import DEFAULT_PICO_COM
 from market.countdown import wait_before_start
 from market.craft.cost import compute_craft_cost
 from market.craft.models import CostLine, CraftCostReport, MaterialPrice, Recipe, RecipeComponent
-from market.craft.recipe_db import collect_unique_materials, load_recipe_by_id
+from market.craft.recipe_db import collect_material_qty_map, collect_unique_materials, load_recipe_by_id
 from market.craft.vendor_search import (
     CRAFT_BACK_SETTLE_S,
     CRAFT_SEARCH_SETTLE_S,
     fetch_material_vendor_price,
 )
 from market.pico_hid import PicoHidSerial
-from market.run_control import RunControl
+from market.run_control import RunControl, StopRequested
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_RECIPES_DIR = PROJECT_ROOT / "config" / "recipes"
@@ -226,8 +226,9 @@ class CraftPriceScanner:
         back = roi.require(REGION_BACK_BUTTON)
 
         if self.start_delay_s > 0:
-            wait_before_start(self.start_delay_s, tag="craft-cost")
+            wait_before_start(self.start_delay_s, tag="craft-cost", run_control=self._run_control)
         finished_price: int | None = None
+        qty_map = collect_material_qty_map(recipe)
         pico = PicoHidSerial(self.pico_com)
         try:
             for i, mat in enumerate(materials, start=1):
@@ -240,6 +241,7 @@ class CraftPriceScanner:
                         item_id=mat.item_id,
                         search_name=mat.search_name,
                         search_queries=list(mat.effective_search_queries()),
+                        qty_needed=qty_map.get(mat.item_id, mat.qty),
                         roi_path=self.roi_path,
                         pico=pico,
                         search=search,
@@ -247,10 +249,17 @@ class CraftPriceScanner:
                         search_settle_s=self.search_settle_s,
                         back_settle_s=self.back_settle_s,
                         input_mode=self.input_mode,
+                        run_control=self._run_control,
                     )
+                except StopRequested:
+                    print("[craft-cost] stop requested — aborting scan", flush=True)
+                    break
                 except Exception as exc:
                     print(f"[craft-cost] skip {mat.search_name!r}: {exc}", flush=True)
                     continue
+                if self._run_control and self._run_control.should_stop():
+                    print("[craft-cost] stop requested — aborting scan", flush=True)
+                    break
                 prices[mat.item_id] = price
 
             if self.include_finished_bow and not (self._run_control and self._run_control.should_stop()):
@@ -260,6 +269,7 @@ class CraftPriceScanner:
                         item_id=f"{self.recipe_id}_finished",
                         search_name=recipe.search_name,
                         search_queries=list(recipe.effective_search_queries()),
+                        qty_needed=1,
                         roi_path=self.roi_path,
                         pico=pico,
                         search=search,
@@ -267,6 +277,7 @@ class CraftPriceScanner:
                         search_settle_s=self.search_settle_s,
                         back_settle_s=self.back_settle_s,
                         input_mode=self.input_mode,
+                        run_control=self._run_control,
                     )
                     if bow_price.unit_price_adena is not None:
                         finished_price = bow_price.unit_price_adena
@@ -281,6 +292,8 @@ class CraftPriceScanner:
                             f"[craft-cost] finished {recipe.search_name!r}: no vendor price found",
                             flush=True,
                         )
+                except StopRequested:
+                    print("[craft-cost] stop requested — aborting scan", flush=True)
                 except Exception as exc:
                     print(f"[craft-cost] skip finished {recipe.search_name!r}: {exc}", flush=True)
         finally:

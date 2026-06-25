@@ -49,6 +49,37 @@ def _compact_extra_allowed(extra: str) -> bool:
     return False
 
 
+def _compact_near_match(a: str, b: str, *, max_edits: int = 1) -> bool:
+    """One OCR typo in compact form (e.g. ``moid`` vs ``mold``)."""
+    if a == b:
+        return True
+    if abs(len(a) - len(b)) > max_edits:
+        return False
+    if len(a) == len(b):
+        return sum(x != y for x, y in zip(a, b)) <= max_edits
+    short, long = (a, b) if len(a) <= len(b) else (b, a)
+    if len(long) - len(short) != 1:
+        return False
+    for i in range(len(long)):
+        if long[:i] + long[i + 1 :] == short:
+            return True
+    return False
+
+
+def is_ocr_garbage_item(item: str) -> bool:
+    """Reject stock-count fragments mistaken for item names (e.g. ``16,436 units``)."""
+    t = _norm(item)
+    if not t:
+        return True
+    if re.search(r"\bunits?\b", t, re.I):
+        return True
+    if re.fullmatch(r"[\d,\s]+", t.replace(" ", "")):
+        return True
+    letters = sum(c.isalpha() for c in t)
+    digits = sum(c.isdigit() for c in t)
+    return digits > 0 and letters <= 2 and digits >= 3
+
+
 def _compact_prefix_match(a: str, b: str, *, min_ratio: float = 0.82) -> bool:
     """True when OCR truncated the name or garbled the last character (e.g. ``6o`` vs ``60``)."""
     if not a or not b:
@@ -134,6 +165,8 @@ def _match_score(row_item: str, target_name: str) -> int:
             return 100
         if _compact_prefix_match(ci, ct):
             return 91
+        if len(ci) >= 8 and len(ct) >= 8 and _compact_near_match(ci, ct):
+            return 86
         if want_recipe and not _is_recipe_row(item):
             recipe_target = re.sub(r"^recipe:\s*", "", target, flags=re.I)
             ct_recipe = _compact(recipe_target)
@@ -197,7 +230,7 @@ def _weak_single_word_fallback(
     for row in rows:
         item = row.item or ""
         item_n = _norm(item)
-        if not item_n or _is_recipe_row(item):
+        if not item_n or _is_recipe_row(item) or is_ocr_garbage_item(item):
             continue
         if "-" in item or "grade" in item_n:
             continue
@@ -235,6 +268,10 @@ def pick_result_row(
     Never falls back to row 1 blindly. Returns None if no confident match.
     """
     rows = filter_search_result_rows(rows)
+    if not rows:
+        return None
+
+    rows = [r for r in rows if not is_ocr_garbage_item(r.item or "")]
     if not rows:
         return None
 

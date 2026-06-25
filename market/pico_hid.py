@@ -58,12 +58,14 @@ class PicoHidSerial:
         self._line(f"KEY {ch}")
         time.sleep(0.07)
 
-    def type_search_text(self, text: str) -> str:
+    def type_search_text(self, text: str, *, run_control=None) -> str:
         """Type item name via USB HID (a-z, 0-9, space, -, (), %)."""
+        from market.run_control import check_stop
         from market.search_input import iter_pico_key_tokens
 
         tokens = iter_pico_key_tokens(text)
         for tok in tokens:
+            check_stop(run_control)
             if len(tok) == 1:
                 self.key_tap_char(tok)
             else:
