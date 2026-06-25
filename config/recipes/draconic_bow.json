@@ -1,0 +1,261 @@
+{
+  "recipe_id": "draconic_bow",
+  "search_name": "Draconic Bow",
+  "grade": "S",
+  "manufact_level": 9,
+  "mp_cost": 225,
+  "success_rate": 0.6,
+  "adena_fee": 15000000,
+  "search_queries": ["Draconic Bow"],
+  "notes": "Craft tree from in-game Recipe Information UI. Enchant is separate from this recipe.",
+  "components": [
+    {
+      "item_id": "recipe_draconic_bow_60",
+      "search_name": "Recipe: Draconic Bow (60%)",
+      "qty": 1
+    },
+    {
+      "item_id": "draconic_bow_shaft",
+      "search_name": "Draconic Bow Shaft",
+      "qty": 17
+    },
+    {
+      "item_id": "warsmiths_holder",
+      "search_name": "Warsmith's Holder",
+      "qty": 4,
+      "craft": {
+        "components": [
+          {
+            "item_id": "maestro_holder",
+            "search_name": "Maestro Holder",
+            "qty": 2,
+            "craft": {
+              "components": [
+                {
+                  "item_id": "varnish_of_purity",
+                  "search_name": "Varnish of Purity",
+                  "qty": 10,
+                  "craft": {
+                    "components": [
+                      {
+                        "item_id": "coarse_bone_powder",
+                        "search_name": "Coarse Bone Powder",
+                        "qty": 3,
+                        "craft": {
+                          "components": [
+                            {
+                              "item_id": "animal_bone",
+                              "search_name": "Animal Bone",
+                              "qty": 10
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "item_id": "varnish",
+                        "search_name": "Varnish",
+                        "qty": 3
+                      },
+                      {
+                        "item_id": "stone_of_purity",
+                        "search_name": "Stone of Purity",
+                        "qty": 1
+                      }
+                    ]
+                  }
+                },
+                {
+                  "item_id": "mold_lubricant",
+                  "search_name": "Mold Lubricant",
+                  "qty": 10
+                },
+                {
+                  "item_id": "mold_hardener",
+                  "search_name": "Mold Hardener",
+                  "qty": 10
+                },
+                {
+                  "item_id": "mold_glue",
+                  "search_name": "Mold Glue",
+                  "qty": 10
+                },
+                {
+                  "item_id": "thread",
+                  "search_name": "Thread",
+                  "qty": 20
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "item_id": "mithril_alloy",
+      "search_name": "Mithril Alloy",
+      "qty": 385,
+      "craft": {
+        "components": [
+          {
+            "item_id": "varnish_of_purity",
+            "search_name": "Varnish of Purity",
+            "qty": 1,
+            "craft": {
+              "components": [
+                {
+                  "item_id": "coarse_bone_powder",
+                  "search_name": "Coarse Bone Powder",
+                  "qty": 3,
+                  "craft": {
+                    "components": [
+                      {
+                        "item_id": "animal_bone",
+                        "search_name": "Animal Bone",
+                        "qty": 10
+                      }
+                    ]
+                  }
+                },
+                {
+                  "item_id": "varnish",
+                  "search_name": "Varnish",
+                  "qty": 3
+                },
+                {
+                  "item_id": "stone_of_purity",
+                  "search_name": "Stone of Purity",
+                  "qty": 1
+                }
+              ]
+            }
+          },
+          {
+            "item_id": "steel",
+            "search_name": "Steel",
+            "qty": 2,
+            "craft": {
+              "components": [
+                {
+                  "item_id": "varnish",
+                  "search_name": "Varnish",
+                  "qty": 5
+                },
+                {
+                  "item_id": "iron_ore",
+                  "search_name": "Iron Ore",
+                  "qty": 5
+                }
+              ]
+            }
+          },
+          {
+            "item_id": "mithril_ore",
+            "search_name": "Mithril Ore",
+            "qty": 1
+          }
+        ]
+      }
+    },
+    {
+      "item_id": "durable_metal_plate",
+      "search_name": "Durable Metal Plate",
+      "qty": 154,
+      "craft": {
+        "components": [
+          {
+            "item_id": "metallic_thread",
+            "search_name": "Metallic Thread",
+            "qty": 5,
+            "craft": {
+              "components": [
+                {
+                  "item_id": "thread",
+                  "search_name": "Thread",
+                  "qty": 10
+                },
+                {
+                  "item_id": "iron_ore",
+                  "search_name": "Iron Ore",
+                  "qty": 5
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "item_id": "high_grade_suede",
+      "search_name": "High-grade Suede",
+      "qty": 77,
+      "craft": {
+        "components": [
+          {
+            "item_id": "coarse_bone_powder",
+            "search_name": "Coarse Bone Powder",
+            "qty": 1,
+            "craft": {
+              "components": [
+                {
+                  "item_id": "animal_bone",
+                  "search_name": "Animal Bone",
+                  "qty": 10
+                }
+              ]
+            }
+          },
+          {
+            "item_id": "suede",
+            "search_name": "Suede",
+            "qty": 3
+          }
+        ]
+      }
+    },
+    {
+      "item_id": "compound_braid",
+      "search_name": "Compound Braid",
+      "qty": 77,
+      "craft": {
+        "components": [
+          {
+            "item_id": "braided_hemp",
+            "search_name": "Braided Hemp",
+            "qty": 5,
+            "craft": {
+              "components": [
+                {
+                  "item_id": "stem",
+                  "search_name": "Stem",
+                  "qty": 5
+                },
+                {
+                  "item_id": "thread",
+                  "search_name": "Thread",
+                  "qty": 5
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "item_id": "enria",
+      "search_name": "Enria",
+      "qty": 77
+    },
+    {
+      "item_id": "crystal_s_grade",
+      "search_name": "Crystal (S-grade)",
+      "search_queries": ["Crystal (S-grade)", "Crystal"],
+      "qty": 214
+    },
+    {
+      "item_id": "gemstone_s_grade",
+      "search_name": "Gemstone (S-grade)",
+      "search_queries": ["Gemstone"],
+      "qty": 43
+    }
+  ]
+}

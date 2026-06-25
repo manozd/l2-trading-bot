@@ -1,0 +1,9 @@
+# One item per line: base name, or base name|enchant for a specific +N listing.
+# Search types the base name only; row 1 enchant must match when |N is set.
+# Example: Draconic Bow|4  →  search "Draconic Bow", accept only +4 on row 1.
+#
+# Used by: python -m cli search
+Amulet: Chant of Evasion
+Angel Slayer
+Arcana Mace
+Draconic Bow|4

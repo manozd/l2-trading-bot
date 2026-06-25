@@ -1,0 +1,8 @@
+# BOHPTS market monitor (screen OCR + Pico HID)
+PyYAML>=6.0
+mss>=9.0
+numpy>=1.24
+Pillow>=10.0
+pyserial>=3.5
+keyboard>=0.13.5
+rapidocr-onnxruntime>=1.3.0

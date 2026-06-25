@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "monitor": 1,
+  "regions": {
+    "market_window": {
+      "left": 777,
+      "top": 381,
+      "width": 351,
+      "height": 404
+    },
+    "next_page": {
+      "left": 979,
+      "top": 731,
+      "width": 15,
+      "height": 14
+    },
+    "search_box": {
+      "left": 837,
+      "top": 459,
+      "width": 161,
+      "height": 22
+    },
+    "back_button": {
+      "left": 855,
+      "top": 753,
+      "width": 198,
+      "height": 28
+    }
+  }
+}

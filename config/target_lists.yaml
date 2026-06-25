@@ -1,0 +1,18 @@
+# Target lists for: python -m cli search --targets config/target_lists.yaml
+# Or set category filter: python -m cli search --category currency
+
+currency:
+  - Coin of Luck
+  - Ancient Adena
+  - Gemstone S
+  - Gemstone A
+
+olympiad:
+  - Draconic Bow
+  - Draconic Leather Armor
+  - Imperial Crusader Breastplate
+
+profit:
+  - Giant's Codex
+  - Giant's Codex - Mastery
+  - Top-Grade Life Stone: level 76
