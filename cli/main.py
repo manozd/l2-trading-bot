@@ -10,19 +10,13 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from market.capture_rois import (
-    DEFAULT_MARKET_ROI_PATH,
-    REGION_MARKET_WINDOW,
-    REGION_NEXT_PAGE,
-)
+from market.capture_rois import DEFAULT_MARKET_ROI_PATH, REGION_MARKET_WINDOW
 from market.constants import DEFAULT_PICO_COM
 from market.core.models import BulkRunConfig, SearchRunConfig
 from market.daemon import DaemonConfig, run_daemon
 from market.items_db import DEFAULT_ITEMS_DB
 from market.pico_hid import PicoHidSerial
-from market.roi_calibrate import run_market_calibration_wizard, run_region_calibration
-from market.roi_calibrate_back import run_back_button_calibration
-from market.roi_calibrate_search import run_search_box_calibration
+from market.roi_calibrate import run_region_calibration
 from market.search import submit_search_query
 from market.search_input import INPUT_PASTE, INPUT_PC, INPUT_PICO
 from market.services.bulk_scanner import BulkScanner
@@ -54,7 +48,7 @@ def build_parser() -> argparse.ArgumentParser:
 def _add_run_command(sub: argparse._SubParsersAction) -> None:
     p = sub.add_parser(
         "run",
-        help="Hotkey daemon (paused by default): C+1..4 calibrate, M+1/M+2/M+3 mode, F12 start/stop",
+        help="Hotkey daemon (paused by default): C+1 calibrate window, M+1/M+2/M+3 mode, F12 start/stop",
     )
     p.add_argument("--roi-config", type=Path, default=DEFAULT_MARKET_ROI_PATH)
     p.add_argument("--pico-com", type=str, default=DEFAULT_PICO_COM)
@@ -113,11 +107,13 @@ def _add_bulk_command(sub: argparse._SubParsersAction) -> None:
 
 
 def _add_calibrate_command(sub: argparse._SubParsersAction) -> None:
-    p = sub.add_parser("calibrate", help="ROI calibration wizard")
+    p = sub.add_parser("calibrate", help="Calibrate Buy Item market window ROI")
     p.add_argument(
         "which",
-        choices=["market", "search", "back", "list", "next"],
-        help="ROI to calibrate (list=market_window, next=next_page, market=list+next)",
+        nargs="?",
+        default="window",
+        choices=["window", "market", "list", "search", "back", "next"],
+        help="All targets calibrate the market window (others are aliases)",
     )
     p.add_argument("--monitor", type=int, default=1)
     p.add_argument("-o", "--output", type=Path, default=DEFAULT_MARKET_ROI_PATH)
@@ -189,48 +185,15 @@ def cmd_bulk(ns: argparse.Namespace) -> None:
 
 def cmd_calibrate(ns: argparse.Namespace) -> None:
     out = ns.output.resolve()
-    if ns.which == "market":
-        run_market_calibration_wizard(
-            monitor_index=ns.monitor,
-            output_path=out,
-            capture_delay_s=ns.delay,
-            live_alpha=ns.live_alpha,
-        )
-    elif ns.which == "search":
-        run_search_box_calibration(
-            monitor_index=ns.monitor,
-            output_path=out,
-            capture_delay_s=ns.delay,
-            live_alpha=ns.live_alpha,
-        )
-    elif ns.which == "back":
-        run_back_button_calibration(
-            monitor_index=ns.monitor,
-            output_path=out,
-            capture_delay_s=ns.delay,
-            live_alpha=ns.live_alpha,
-        )
-    elif ns.which == "list":
-        if not run_region_calibration(
-            REGION_MARKET_WINDOW,
-            monitor_index=ns.monitor,
-            output_path=out,
-            capture_delay_s=ns.delay,
-            live_alpha=ns.live_alpha,
-        ):
-            raise SystemExit("Calibration cancelled.")
-    elif ns.which == "next":
-        if not run_region_calibration(
-            REGION_NEXT_PAGE,
-            monitor_index=ns.monitor,
-            output_path=out,
-            capture_delay_s=ns.delay,
-            live_alpha=ns.live_alpha,
-        ):
-            raise SystemExit("Calibration cancelled.")
-    else:
-        raise SystemExit(f"Unknown calibrate target: {ns.which}")
-    print(f"Saved {out}", flush=True)
+    if not run_region_calibration(
+        REGION_MARKET_WINDOW,
+        monitor_index=ns.monitor,
+        output_path=out,
+        capture_delay_s=ns.delay,
+        live_alpha=ns.live_alpha,
+    ):
+        raise SystemExit("Calibration cancelled.")
+    print(f"Saved {out} (market_window only; UI controls derived at runtime)", flush=True)
 
 
 def _add_validate_pages_command(sub: argparse._SubParsersAction) -> None:

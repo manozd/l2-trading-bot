@@ -1,4 +1,4 @@
-"""Search → pick result row → collect vendor listings with prices."""
+"""Search hub → search results → optional vendor list."""
 
 from __future__ import annotations
 
@@ -17,53 +17,232 @@ from market.capture_rois import (
 )
 from market.craft.match import (
     filter_search_result_rows,
+    find_search_result_price_row,
     format_result_rows,
+    is_likely_search_hub,
     is_ocr_garbage_item,
     pick_result_row,
+    visual_click_row,
 )
 from market.craft.models import MaterialPrice
-from market.full_list_parser import parse_page_rows, parse_search_result_rows, row_click_screen_xy
+from market.full_list_parser import MarketRow, parse_page_rows
 from market.input_ctl import smooth_move_to
 from market.ocr_engine import get_ocr_engine
 from market.page_fingerprint import PageFingerprint, fingerprint_page, page_unchanged
-from market.pagination import read_page_indicator
+from market.pagination import PageIndicator, read_page_indicator
 from market.pico_hid import PicoHidSerial
 from market.run_control import RunControl, StopRequested, check_stop, sleep_checked
 from market.search import park_cursor_for_ocr, press_back_button, submit_search_query
+from market.ui_layout import search_results_row_click_xy
 
 MAX_VENDOR_PAGES = 15
-MAX_SEARCH_RESULT_PAGES = 3
+MAX_SEARCH_RESULT_PAGES = 8
 
 CRAFT_SEARCH_SETTLE_S = 0.45
 CRAFT_BACK_SETTLE_S = 0.45
 CRAFT_PAGE_DELAY_S = 0.3
 CRAFT_ROW_SETTLE_S = 0.45
 CRAFT_VENDOR_SETTLE_S = 0.3
-CRAFT_POST_SEARCH_WAIT_S = 0.25
-CRAFT_OCR_RETRY_WAIT_S = 0.35
+CRAFT_POST_SEARCH_WAIT_S = 0.55
+CRAFT_RESULTS_RETRY_WAITS_S = (0.0, 0.35, 0.5)
 
 
-def _click_row(
-    row_number: int,
+def _click_search_result_row(
     *,
     market: RoiRect,
+    row: int,
     pico: PicoHidSerial,
-    settle_s: float = CRAFT_ROW_SETTLE_S,
     run_control: RunControl | None = None,
 ) -> None:
+    cx, cy = search_results_row_click_xy(market, row=row)
+    print(f"[craft-price] click search row {row} at ({cx}, {cy})", flush=True)
     check_stop(run_control)
-    frame = grab_screen_rect(market.left, market.top, market.width, market.height)
-    cx, cy = row_click_screen_xy(
-        crop_height=frame.bgr.shape[0],
-        row=row_number,
-        window_left=market.left,
-        window_top=market.top,
-        window_width=market.width,
-    )
     smooth_move_to(cx, cy, duration_s=0.14, steps=10, sync=True)
     sleep_checked(0.05, run_control=run_control)
     pico.click_left_prepare(hold_ms=120, ping=True)
-    sleep_checked(settle_s, run_control=run_control)
+    sleep_checked(CRAFT_ROW_SETTLE_S, run_control=run_control)
+
+
+def _click_next_page(
+    *,
+    next_btn: RoiRect,
+    pico: PicoHidSerial,
+    page_delay_s: float = CRAFT_PAGE_DELAY_S,
+    run_control: RunControl | None = None,
+) -> None:
+    cx, cy = next_btn.center_screen()
+    smooth_move_to(cx, cy, duration_s=0.08, steps=4, sync=False)
+    time.sleep(0.03)
+    pico.click_left_prepare(hold_ms=100, ping=True)
+    sleep_checked(page_delay_s, run_control=run_control)
+
+
+def _read_search_results_page(
+    *,
+    roi_path: Path,
+    pico: PicoHidSerial,
+    page_i: int,
+    run_control: RunControl | None = None,
+) -> tuple[list[MarketRow], PageIndicator | None]:
+    """OCR one page of the search-results list (Screen B)."""
+    cfg = load_market_roi_config(roi_path)
+    market = cfg.require(REGION_MARKET_WINDOW)
+    back = cfg.require(REGION_BACK_BUTTON)
+    next_btn = cfg.require(REGION_NEXT_PAGE)
+    ocr = get_ocr_engine()
+
+    if run_control and run_control.should_stop():
+        raise StopRequested()
+    park_cursor_for_ocr(back=back, next_btn=next_btn, on_next=(page_i > 1))
+    frame = grab_screen_rect(market.left, market.top, market.width, market.height)
+    indicator = read_page_indicator(frame.bgr, ocr)
+    page_num = indicator.current if indicator else page_i
+    rows = parse_page_rows(frame.bgr, page=page_num, ocr=ocr)
+    return rows, indicator
+
+
+def _scan_search_results(
+    *,
+    roi_path: Path,
+    pico: PicoHidSerial,
+    search_name: str,
+    query: str,
+    qty_needed: int | None,
+    run_control: RunControl | None = None,
+) -> tuple[MarketRow | None, MarketRow | None, list[MarketRow]]:
+    """
+    Walk paginated search results until the target item is found.
+
+    Returns ``(picked_row, fast_price_row, visible_on_matched_page)``.
+    Either ``picked_row`` (open vendors) or ``fast_price_row`` (qty 1) is set.
+    """
+    cfg = load_market_roi_config(roi_path)
+    next_btn = cfg.require(REGION_NEXT_PAGE)
+    last_visible: list[MarketRow] = []
+
+    for page_i in range(1, MAX_SEARCH_RESULT_PAGES + 1):
+        if page_i == 1:
+            rows, indicator = _read_search_results_with_retry(
+                roi_path=roi_path,
+                pico=pico,
+                run_control=run_control,
+            )
+        else:
+            rows, indicator = _read_search_results_page(
+                roi_path=roi_path,
+                pico=pico,
+                page_i=page_i,
+                run_control=run_control,
+            )
+
+        visible = filter_search_result_rows(rows)
+        last_visible = visible
+
+        price_row = find_search_result_price_row(
+            rows,
+            search_name,
+            search_query=query,
+        )
+        if price_row and _can_use_search_results_min_price(price_row, qty_needed):
+            page_label = _page_label(indicator, page_i)
+            print(
+                f"[craft-price] matched {search_name!r} on search results{page_label}",
+                flush=True,
+            )
+            return None, price_row, visible
+
+        picked = pick_result_row(rows, search_name, search_query=query)
+        if picked is not None:
+            page_label = _page_label(indicator, page_i)
+            print(
+                f"[craft-price] matched {search_name!r} on search results{page_label} "
+                f"— {picked.item!r}",
+                flush=True,
+            )
+            return picked, None, visible
+
+        if indicator is None or indicator.is_last:
+            break
+
+        print(
+            f"[craft-price] search results {indicator.current}/{indicator.total} "
+            f"— {search_name!r} not here, next page",
+            flush=True,
+        )
+        _click_next_page(
+            next_btn=next_btn,
+            pico=pico,
+            run_control=run_control,
+        )
+
+    return None, None, last_visible
+
+
+def _page_label(indicator: PageIndicator | None, page_i: int) -> str:
+    if indicator:
+        return f" (page {indicator.current}/{indicator.total})"
+    if page_i > 1:
+        return f" (page {page_i})"
+    return ""
+
+
+def _read_search_results_with_retry(
+    *,
+    roi_path: Path,
+    pico: PicoHidSerial,
+    run_control: RunControl | None = None,
+) -> tuple[list[MarketRow], PageIndicator | None]:
+    """OCR search results page 1; retry while the category hub is still showing."""
+    rows: list[MarketRow] = []
+    indicator: PageIndicator | None = None
+    for attempt, extra_wait in enumerate(CRAFT_RESULTS_RETRY_WAITS_S):
+        if extra_wait > 0:
+            sleep_checked(extra_wait, run_control=run_control)
+        rows, indicator = _read_search_results_page(
+            roi_path=roi_path,
+            pico=pico,
+            page_i=1,
+            run_control=run_control,
+        )
+        visible = filter_search_result_rows(rows)
+        if visible and not is_likely_search_hub(rows):
+            return rows, indicator
+        if attempt + 1 < len(CRAFT_RESULTS_RETRY_WAITS_S):
+            print(
+                "[craft-price] waiting for search-results list …",
+                flush=True,
+            )
+    return rows, indicator
+
+
+def _can_use_search_results_min_price(
+    picked: MarketRow | None,
+    qty_needed: int | None,
+) -> bool:
+    """Screen B min price is only enough for single-unit buys."""
+    if picked is None or picked.price_adena is None or picked.price_adena < 50:
+        return False
+    need = qty_needed if qty_needed is not None else 1
+    return need <= 1
+
+
+def _summarize_search_result_row(
+    row: MarketRow,
+    *,
+    item_id: str,
+    search_name: str,
+    scanned_at: str,
+) -> MaterialPrice:
+    return MaterialPrice(
+        item_id=item_id,
+        search_name=search_name,
+        unit_price_adena=int(row.price_adena) if row.price_adena is not None else None,
+        vendor=row.vendor,
+        units_available=int(row.units) if row.units is not None else None,
+        listing_count=1,
+        source="search_results",
+        scanned_at=scanned_at,
+    )
 
 
 def collect_vendor_listings(
@@ -75,12 +254,7 @@ def collect_vendor_listings(
     qty_needed: int | None = None,
     run_control: RunControl | None = None,
 ) -> list[dict]:
-    """OCR vendor rows (Price per unit / In stock).
-
-    When ``qty_needed`` is set, stops after page 1 if OCR shows enough stock on
-    that page alone; otherwise keeps paginating until cumulative known stock
-    meets the need or pages run out.
-    """
+    """OCR vendor list after opening a search-result row."""
     cfg = load_market_roi_config(roi_path)
     market = cfg.require(REGION_MARKET_WINDOW)
     next_btn = cfg.require(REGION_NEXT_PAGE)
@@ -144,62 +318,39 @@ def collect_vendor_listings(
             break
 
         prev_fp = cur_fp
-        cx, cy = next_btn.center_screen()
-        smooth_move_to(cx, cy, duration_s=0.08, steps=4, sync=False)
-        time.sleep(0.03)
-        pico.click_left_prepare(hold_ms=100, ping=True)
-        sleep_checked(page_delay_s, run_control=run_control)
-
-    return all_rows
-
-
-def collect_search_result_rows(
-    *,
-    roi_path: Path,
-    pico: PicoHidSerial,
-    max_pages: int = MAX_SEARCH_RESULT_PAGES,
-    page_delay_s: float = CRAFT_PAGE_DELAY_S,
-    run_control: RunControl | None = None,
-) -> list:
-    """OCR search-results list. Only paginates when a ``current / total`` indicator exists."""
-    cfg = load_market_roi_config(roi_path)
-    market = cfg.require(REGION_MARKET_WINDOW)
-    next_btn = cfg.require(REGION_NEXT_PAGE)
-    back = cfg.require(REGION_BACK_BUTTON)
-    ocr = get_ocr_engine()
-
-    all_rows = []
-    prev_fp: PageFingerprint | None = None
-
-    for page_i in range(1, max_pages + 1):
-        if run_control and run_control.should_stop():
-            raise StopRequested()
-        park_cursor_for_ocr(
-            back=back,
+        _click_next_page(
             next_btn=next_btn,
-            on_next=(page_i > 1),
+            pico=pico,
+            page_delay_s=page_delay_s,
+            run_control=run_control,
         )
-        frame = grab_screen_rect(market.left, market.top, market.width, market.height)
-        cur_fp = fingerprint_page(frame.bgr)
-        if page_i > 1 and page_unchanged(prev_fp, cur_fp):
-            break
-
-        indicator = read_page_indicator(frame.bgr, ocr)
-        page_num = indicator.current if indicator else page_i
-        rows = parse_search_result_rows(frame.bgr, page=page_num, ocr=ocr)
-        all_rows.extend(rows)
-
-        if indicator is None or indicator.is_last:
-            break
-
-        prev_fp = cur_fp
-        cx, cy = next_btn.center_screen()
-        smooth_move_to(cx, cy, duration_s=0.08, steps=4, sync=False)
-        time.sleep(0.03)
-        pico.click_left_prepare(hold_ms=100, ping=True)
-        sleep_checked(page_delay_s, run_control=run_control)
 
     return all_rows
+
+
+def _fill_unit_price(listings: list[dict], qty: int) -> tuple[int, str | None] | None:
+    """Average unit price buying ``qty`` from cheapest listings with known stock."""
+    ordered = sorted(listings, key=lambda r: int(r["price_adena"]))
+    remaining = qty
+    total = 0
+    first_vendor: str | None = None
+    for row in ordered:
+        if remaining <= 0:
+            break
+        price = int(row["price_adena"])
+        units = row.get("units")
+        if units is None:
+            continue
+        take = min(remaining, int(units))
+        if take <= 0:
+            continue
+        total += take * price
+        remaining -= take
+        if first_vendor is None:
+            first_vendor = row.get("vendor")
+    if remaining > 0:
+        return None
+    return (total + qty - 1) // qty, first_vendor
 
 
 def _summarize_listings(
@@ -208,6 +359,7 @@ def _summarize_listings(
     item_id: str,
     search_name: str,
     scanned_at: str,
+    qty_needed: int | None = None,
 ) -> MaterialPrice:
     valid = [
         r for r in listings
@@ -223,6 +375,21 @@ def _summarize_listings(
             scanned_at=scanned_at,
         )
 
+    need = qty_needed if qty_needed is not None else 1
+    if need > 1:
+        filled = _fill_unit_price(valid, need)
+        if filled is not None:
+            unit_price, vendor = filled
+            return MaterialPrice(
+                item_id=item_id,
+                search_name=search_name,
+                unit_price_adena=unit_price,
+                vendor=vendor,
+                listing_count=len(valid),
+                source="vendor_search",
+                scanned_at=scanned_at,
+            )
+
     best = min(valid, key=lambda r: int(r["price_adena"]))
     units = best.get("units")
     return MaterialPrice(
@@ -237,53 +404,33 @@ def _summarize_listings(
     )
 
 
-def _back_from_search_results(
-    *,
-    back: RoiRect,
-    pico: PicoHidSerial,
-    back_settle_s: float,
-    run_control: RunControl | None = None,
-) -> None:
-    """Search results → search hub (one Back)."""
-    check_stop(run_control)
-    press_back_button(
-        back=back,
-        pico=pico,
-        settle_s=back_settle_s,
-        fast=True,
-        run_control=run_control,
-    )
-
-
-def _back_from_vendor_list(
+def _back_to_search_hub(
     *,
     search: RoiRect,
     back: RoiRect,
     pico: PicoHidSerial,
     back_settle_s: float,
+    count: int,
     run_control: RunControl | None = None,
 ) -> None:
-    """Vendor list → search hub (two Backs). Move off Back first — OCR parks cursor there."""
+    """Press Back ``count`` times to return to the search hub (search bar visible)."""
     check_stop(run_control)
     cx, cy = search.center_screen()
     smooth_move_to(cx, cy, duration_s=0.1, steps=6, sync=False)
     sleep_checked(0.08, run_control=run_control)
-    press_back_button(
-        back=back,
-        pico=pico,
-        settle_s=back_settle_s,
-        fast=True,
-        run_control=run_control,
-    )
-    sleep_checked(0.15, run_control=run_control)
-    press_back_button(
-        back=back,
-        pico=pico,
-        settle_s=back_settle_s,
-        fast=True,
-        run_control=run_control,
-    )
-    sleep_checked(0.15, run_control=run_control)
+    for _ in range(count):
+        press_back_button(
+            back=back,
+            pico=pico,
+            settle_s=back_settle_s,
+            fast=True,
+            run_control=run_control,
+        )
+        sleep_checked(0.15, run_control=run_control)
+    if count == 1:
+        print("[craft-price] back ×1 — search hub", flush=True)
+    else:
+        print(f"[craft-price] back ×{count} — search hub", flush=True)
 
 
 def fetch_material_vendor_price(
@@ -303,9 +450,11 @@ def fetch_material_vendor_price(
     run_control: RunControl | None = None,
 ) -> MaterialPrice:
     """
-    Full flow: search → pick matching row → vendor pages → back to search hub.
+    Hub → search results → (optional) vendor list.
 
-    Requires the Buy Item window with search box visible (category screen).
+    Three screens: search hub (search bar) → results (min price) → vendors (all sellers).
+    Use min price on the results screen when enough; otherwise open the matched row.
+    Navigation: results only → 1× Back; opened vendors → 2× Back.
     """
     scanned_at = datetime.now(timezone.utc).isoformat()
     market_cfg = load_market_roi_config(roi_path)
@@ -321,9 +470,7 @@ def fetch_material_vendor_price(
         seen_q.add(key)
         unique_queries.append(q)
 
-    picked = None
-    last_rows = []
-    price: MaterialPrice | None = None
+    last_visible: list[MarketRow] = []
 
     for query in unique_queries:
         if run_control and run_control.should_stop():
@@ -340,51 +487,68 @@ def fetch_material_vendor_price(
         )
         sleep_checked(CRAFT_POST_SEARCH_WAIT_S, run_control=run_control)
 
-        result_rows = collect_search_result_rows(
+        picked, price_row, visible = _scan_search_results(
             roi_path=roi_path,
             pico=pico,
+            search_name=search_name,
+            query=query,
+            qty_needed=qty_needed,
             run_control=run_control,
         )
-        last_rows = result_rows
-        picked = pick_result_row(
-            result_rows,
-            search_name,
-            search_query=query,
-        )
-        if picked is None:
-            sleep_checked(CRAFT_OCR_RETRY_WAIT_S, run_control=run_control)
-            result_rows = collect_search_result_rows(
-                roi_path=roi_path,
-                pico=pico,
-                run_control=run_control,
+        last_visible = visible
+
+        if price_row and _can_use_search_results_min_price(price_row, qty_needed):
+            price = _summarize_search_result_row(
+                price_row,
+                item_id=item_id,
+                search_name=search_name,
+                scanned_at=scanned_at,
             )
-            last_rows = result_rows
-            picked = pick_result_row(
-                result_rows,
-                search_name,
-                search_query=query,
-            )
-        if picked is None:
-            visible = filter_search_result_rows(result_rows)
             print(
-                f"[craft-price] no match for {search_name!r} via {query!r} — "
-                f"OCR: {format_result_rows(visible)}",
+                f"[craft-price] {search_name!r} → {price.unit_price_adena:,} adena "
+                f"(min price on search results, vendor {price.vendor!r})",
                 flush=True,
             )
-            _back_from_search_results(
+            _back_to_search_hub(
+                search=search,
                 back=back,
                 pico=pico,
                 back_settle_s=back_settle_s,
+                count=1,
+                run_control=run_control,
+            )
+            check_stop(run_control)
+            return price
+
+        if picked is None:
+            print(
+                f"[craft-price] no row match for {search_name!r} "
+                f"(visible: {format_result_rows(visible)})",
+                flush=True,
+            )
+            _back_to_search_hub(
+                search=search,
+                back=back,
+                pico=pico,
+                back_settle_s=back_settle_s,
+                count=1,
                 run_control=run_control,
             )
             continue
 
+        click_row = visual_click_row(visible, picked)
         print(
-            f"[craft-price] open vendors — row {picked.row}: {picked.item!r}"
+            f"[craft-price] open vendors — row {click_row}: {picked.item!r}"
             + (f" (query {query!r})" if query != search_name else ""),
             flush=True,
         )
-        _click_row(picked.row, market=market, pico=pico, run_control=run_control)
+
+        _click_search_result_row(
+            market=market,
+            row=click_row,
+            pico=pico,
+            run_control=run_control,
+        )
         sleep_checked(CRAFT_VENDOR_SETTLE_S, run_control=run_control)
 
         listings = collect_vendor_listings(
@@ -398,6 +562,7 @@ def fetch_material_vendor_price(
             item_id=item_id,
             search_name=search_name,
             scanned_at=scanned_at,
+            qty_needed=qty_needed,
         )
 
         if price.unit_price_adena is not None:
@@ -406,34 +571,35 @@ def fetch_material_vendor_price(
                 f"({price.listing_count} listings, best vendor {price.vendor!r})",
                 flush=True,
             )
-            _back_from_vendor_list(
+            _back_to_search_hub(
                 search=search,
                 back=back,
                 pico=pico,
                 back_settle_s=back_settle_s,
+                count=2,
                 run_control=run_control,
             )
             check_stop(run_control)
             return price
 
         print(
-            f"[craft-price] {search_name!r} — row {picked.row} opened but no vendor "
-            f"prices OCR'd, trying next query if any",
+            f"[craft-price] {search_name!r} — no vendor prices on row {click_row} "
+            f"(query {query!r}), trying next query if any",
             flush=True,
         )
-        _back_from_vendor_list(
+        _back_to_search_hub(
             search=search,
             back=back,
             pico=pico,
             back_settle_s=back_settle_s,
+            count=2,
             run_control=run_control,
         )
-        picked = None
 
     print(
         f"[craft-price] search failed for {search_name!r} "
-        f"(tried {len(unique_queries)} queries, last OCR: "
-        f"{format_result_rows(filter_search_result_rows(last_rows))})",
+        f"(tried {len(unique_queries)} queries, last visible: "
+        f"{format_result_rows(last_visible)})",
         flush=True,
     )
     check_stop(run_control)

@@ -74,6 +74,7 @@ def focus_search_box(
     *,
     settle_s: float = 0.25,
     fast: bool = False,
+    clear: bool = False,
     run_control: RunControl | None = None,
 ) -> None:
     click_roi(
@@ -84,6 +85,10 @@ def focus_search_box(
         fast=fast,
         run_control=run_control,
     )
+    if clear:
+        sleep_checked(0.08, run_control=run_control)
+        pico.click_left(hold_ms=100, double=True)
+        sleep_checked(0.12, run_control=run_control)
 
 
 def submit_search_query(
@@ -103,6 +108,7 @@ def submit_search_query(
         pico,
         settle_s=0.2 if fast else 0.25,
         fast=fast,
+        clear=(input_mode == INPUT_PICO),
         run_control=run_control,
     )
 

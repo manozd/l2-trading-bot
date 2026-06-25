@@ -15,6 +15,9 @@ from market.ocr_engine import get_ocr_engine, run_ocr
 from market.row_fields import PriceConfidence, parse_fields_from_lines
 
 ROWS_PER_PAGE = 7
+# Search hits are tall (name + vendor + price); fewer bands than vendor list.
+SEARCH_RESULT_ROWS = 4
+SEARCH_CLICK_Y_FRAC = 0.18
 # Whole Buy Item window ROI (title + list + pagination + back).
 TOP_FRAC = 0.10
 # List body ends just above "4 / 131" pagination text (~88% on typical crops).
@@ -88,12 +91,25 @@ def is_plausible_market_row(row: MarketRow) -> bool:
 def is_plausible_search_result_row(row: MarketRow) -> bool:
     """Search results list item names only — no vendor/price required."""
     if row.item and len(row.item.strip()) >= 2:
+        low = row.item.casefold()
+        if "adena" in low or "price per" in low or "min. price" in low:
+            return False
+        if "on market" in low or re.search(r"\bunits?\b", low):
+            return False
+        if len(row.item.strip()) <= 4 and row.item.strip().isalpha() and row.item.isupper():
+            return False
+        if re.fullmatch(r"[\d,\s]+", row.item.replace(" ", "")):
+            return False
         return True
     raw = (row.raw_text or "").strip()
     if len(raw) < 2:
         return False
     low = raw.lower()
     if "adena" in low or "price per" in low or "vendor" in low:
+        return False
+    if low.startswith("vendor"):
+        return False
+    if "on market" in low or re.search(r"\bunits?\b", low):
         return False
     return True
 
@@ -123,25 +139,92 @@ def _coerce_search_result_item(row: MarketRow) -> MarketRow:
     )
 
 
-def _list_bounds(height: int) -> tuple[int, int]:
-    top_skip = int(height * TOP_FRAC)
+def _list_bounds(
+    height: int,
+    *,
+    top_frac: float = TOP_FRAC,
+    rows_per_page: int = ROWS_PER_PAGE,
+) -> tuple[int, int]:
+    top_skip = int(height * top_frac)
     list_y1 = min(int(height * LIST_BOTTOM_FRAC), height - 4)
-    return top_skip, max(top_skip + ROWS_PER_PAGE * 8, list_y1)
+    return top_skip, max(top_skip + rows_per_page * 8, list_y1)
 
 
-def _row_bands(height: int) -> list[tuple[int, int]]:
-    top_skip, list_y1 = _list_bounds(height)
+def _row_bands(
+    height: int,
+    *,
+    top_frac: float = TOP_FRAC,
+    rows_per_page: int = ROWS_PER_PAGE,
+) -> list[tuple[int, int]]:
+    top_skip, list_y1 = _list_bounds(height, top_frac=top_frac, rows_per_page=rows_per_page)
     body = list_y1 - top_skip
-    row_h = body // ROWS_PER_PAGE
+    row_h = body // rows_per_page
     bands: list[tuple[int, int]] = []
-    for i in range(ROWS_PER_PAGE):
+    for i in range(rows_per_page):
         y0 = top_skip + i * row_h
-        if i < ROWS_PER_PAGE - 1:
+        if i < rows_per_page - 1:
             y1 = top_skip + (i + 1) * row_h
         else:
             y1 = list_y1
         bands.append((y0, y1))
     return bands
+
+
+def search_result_click_xy(
+    bgr: np.ndarray,
+    *,
+    item_label: str,
+    window_left: int,
+    window_top: int,
+    window_width: int,
+    top_frac: float = TOP_FRAC,
+    ocr=None,
+) -> tuple[int, int] | None:
+    """Click the OCR box for a search hit (topmost matching line), not a fixed row band."""
+    if ocr is None:
+        ocr = get_ocr_engine()
+    from market.craft.match import _compact, _compact_prefix_match, _norm
+
+    target = _norm(item_label)
+    target_c = _compact(item_label)
+    top_skip, list_y1 = _list_bounds(
+        bgr.shape[0], top_frac=top_frac, rows_per_page=SEARCH_RESULT_ROWS
+    )
+
+    best: tuple[float, float, float] | None = None  # cy, cx, score
+    for box, text, _score in _ocr_on_bgr(bgr, ocr):
+        if _is_price_line(text):
+            continue
+        low = text.lower()
+        if "on market" in low or "vendor" in low:
+            continue
+        cx, cy = _box_center(box)
+        if not (top_skip <= cy < list_y1):
+            continue
+        text_n = _norm(text)
+        text_c = _compact(text)
+        match = 0
+        if text_n == target:
+            match = 100
+        elif target_c and text_c and (
+            text_c == target_c
+            or _compact_prefix_match(text_c, target_c)
+            or _compact_prefix_match(target_c, text_c)
+        ):
+            match = 90
+        elif target and (target in text_n or text_n in target):
+            match = 75
+        if match < 70:
+            continue
+        if best is None or cy < best[0] or (cy == best[0] and match > best[2]):
+            best = (cy, cx, float(match))
+
+    if best is None:
+        return None
+    cy, cx, _m = best
+    screen_x = window_left + max(int(window_width * 0.32), int(cx))
+    screen_y = window_top + int(cy)
+    return screen_x, screen_y
 
 
 def row_click_screen_xy(
@@ -151,12 +234,15 @@ def row_click_screen_xy(
     window_left: int,
     window_top: int,
     window_width: int,
+    top_frac: float = TOP_FRAC,
+    rows_per_page: int = ROWS_PER_PAGE,
+    y_frac: float = 0.5,
 ) -> tuple[int, int]:
-    """Screen coordinates to click a list row (1–7) in the market window."""
-    bands = _row_bands(crop_height)
+    """Screen coordinates to click a list row in the market window."""
+    bands = _row_bands(crop_height, top_frac=top_frac, rows_per_page=rows_per_page)
     idx = max(0, min(row - 1, len(bands) - 1))
     y0, y1 = bands[idx]
-    cy = window_top + (y0 + y1) // 2
+    cy = window_top + y0 + int((y1 - y0) * y_frac)
     cx = window_left + window_width // 2
     return cx, cy
 
@@ -172,12 +258,18 @@ def _is_price_line(text: str) -> bool:
     return "adena" in t or "price" in t or bool(re.search(r"1:\s*[\d,]", t))
 
 
-def _assign_row_index(cy: float, text: str, bands: list[tuple[int, int]]) -> int:
+def _assign_row_index(
+    cy: float,
+    text: str,
+    bands: list[tuple[int, int]],
+    *,
+    search_rows: bool = False,
+) -> int:
     """Price lines sit on the row divider; last-row prices may extend below the band."""
     last_i = len(bands) - 1
     last_y0, last_y1 = bands[last_i]
 
-    if _is_price_line(text):
+    if not search_rows and _is_price_line(text):
         if last_y0 <= cy <= last_y1 + LAST_ROW_PRICE_SLOP_PX:
             return last_i
         slop = PRICE_SLOP_PX
@@ -231,29 +323,43 @@ def _parse_from_grouped_items(
     return rows
 
 
-def _ocr_page_grouped(bgr: np.ndarray, ocr) -> list[list[tuple[float, float, str]]]:
+def _ocr_page_grouped(
+    bgr: np.ndarray,
+    ocr,
+    *,
+    top_frac: float = TOP_FRAC,
+    rows_per_page: int = ROWS_PER_PAGE,
+    search_rows: bool = False,
+) -> list[list[tuple[float, float, str]]]:
     """One OCR pass on the full crop; assign list-zone detections to row bands by Y."""
     h = bgr.shape[0]
-    bands = _row_bands(h)
-    top_skip, list_y1 = _list_bounds(h)
+    bands = _row_bands(h, top_frac=top_frac, rows_per_page=rows_per_page)
+    top_skip, list_y1 = _list_bounds(h, top_frac=top_frac, rows_per_page=rows_per_page)
 
     # OCR the full window — body-only crops sometimes drop noisy price lines (+0 glued to label).
     detections = _ocr_on_bgr(bgr, ocr)
-    row_items: list[list[tuple[float, float, str]]] = [[] for _ in range(ROWS_PER_PAGE)]
+    row_items: list[list[tuple[float, float, str]]] = [[] for _ in range(rows_per_page)]
 
     for box, text, _score in detections:
         cx, cy_full = _box_center(box)
         if not (top_skip <= cy_full < list_y1):
             continue
-        idx = _assign_row_index(cy_full, text, bands)
+        idx = _assign_row_index(cy_full, text, bands, search_rows=search_rows)
         row_items[idx].append((cy_full, cx, text))
     return row_items
 
 
-def _ocr_row_crops_grouped(bgr: np.ndarray, ocr, *, scale: int = 2) -> list[list[tuple[float, float, str]]]:
+def _ocr_row_crops_grouped(
+    bgr: np.ndarray,
+    ocr,
+    *,
+    scale: int = 2,
+    top_frac: float = TOP_FRAC,
+    rows_per_page: int = ROWS_PER_PAGE,
+) -> list[list[tuple[float, float, str]]]:
     """Fallback: OCR each row band separately (2x upscale)."""
-    bands = _row_bands(bgr.shape[0])
-    row_items: list[list[tuple[float, float, str]]] = [[] for _ in range(ROWS_PER_PAGE)]
+    bands = _row_bands(bgr.shape[0], top_frac=top_frac, rows_per_page=rows_per_page)
+    row_items: list[list[tuple[float, float, str]]] = [[] for _ in range(rows_per_page)]
     for idx, (y0, y1) in enumerate(bands):
         row_bgr = _upscale_bgr(bgr[y0:y1, :], scale=scale)
         for box, text, _score in _ocr_on_bgr(row_bgr, ocr):
@@ -314,18 +420,97 @@ def parse_page_rows(
     return rows
 
 
+def ocr_shows_search_listings(bgr: np.ndarray, *, crop_y0: int, crop_y1: int, ocr=None) -> bool:
+    """True when the search-results strip shows a market listing (not the category hub)."""
+    if ocr is None:
+        ocr = get_ocr_engine()
+    y0 = max(0, crop_y0)
+    y1 = min(bgr.shape[0], crop_y1)
+    if y1 <= y0 + 8:
+        return False
+    crop = _upscale_bgr(bgr[y0:y1, :], scale=2)
+    parts: list[str] = []
+    for _box, text, _score in _ocr_on_bgr(crop, ocr):
+        t = text.strip()
+        if t:
+            parts.append(t)
+    if not parts:
+        return False
+    blob = " ".join(parts).lower()
+    if "on market" in blob or "min. price" in blob:
+        return True
+    return "vendor" in blob and "adena" in blob
+
+
+def _parse_search_results_crop(
+    bgr: np.ndarray,
+    *,
+    crop_y0: int,
+    crop_y1: int,
+    page: int,
+    ocr,
+) -> list[MarketRow]:
+    """OCR only the listing strip below the search box (avoids band mis-alignment)."""
+    y0 = max(0, crop_y0)
+    y1 = min(bgr.shape[0], crop_y1)
+    if y1 <= y0 + 8:
+        return []
+    crop = bgr[y0:y1, :]
+    crop_h = crop.shape[0]
+    rows_in_crop = max(1, min(SEARCH_RESULT_ROWS, crop_h // 28))
+    bands = _row_bands(crop_h, top_frac=0.0, rows_per_page=rows_in_crop)
+    scaled = _upscale_bgr(crop, scale=2)
+    row_items: list[list[tuple[float, float, str]]] = [[] for _ in range(rows_in_crop)]
+    for box, text, _score in _ocr_on_bgr(scaled, ocr):
+        cx, cy = _box_center(box)
+        cy_crop = cy / 2
+        if not (0 <= cy_crop < crop_h):
+            continue
+        idx = _assign_row_index(cy_crop, text, bands, search_rows=True)
+        row_items[idx].append((cy_crop + y0, cx, text))
+
+    rows = _parse_from_grouped_items(
+        row_items,
+        bgr=bgr,
+        bands=[(y0 + a, y0 + b) for a, b in bands],
+        page=page,
+        row_filter=is_plausible_search_result_row,
+    )
+    return [_coerce_search_result_item(r) for r in rows]
+
+
 def parse_search_result_rows(
     bgr: np.ndarray,
     *,
     page: int = 0,
     ocr=None,
+    top_frac: float = TOP_FRAC,
+    crop_y0: int | None = None,
+    crop_y1: int | None = None,
 ) -> list[MarketRow]:
     """Parse search-results screen (item names only, no vendor prices)."""
     if ocr is None:
         ocr = get_ocr_engine()
 
-    bands = _row_bands(bgr.shape[0])
-    grouped = _ocr_page_grouped(bgr, ocr)
+    if crop_y0 is not None and crop_y1 is not None:
+        crop_rows = _parse_search_results_crop(
+            bgr,
+            crop_y0=crop_y0,
+            crop_y1=crop_y1,
+            page=page,
+            ocr=ocr,
+        )
+        if crop_rows:
+            return crop_rows
+
+    bands = _row_bands(bgr.shape[0], top_frac=top_frac, rows_per_page=SEARCH_RESULT_ROWS)
+    grouped = _ocr_page_grouped(
+        bgr,
+        ocr,
+        top_frac=top_frac,
+        rows_per_page=SEARCH_RESULT_ROWS,
+        search_rows=True,
+    )
     rows = _parse_from_grouped_items(
         grouped,
         bgr=bgr,
@@ -335,7 +520,13 @@ def parse_search_result_rows(
     )
 
     if len(rows) < 2:
-        grouped_fb = _ocr_row_crops_grouped(bgr, ocr, scale=2)
+        grouped_fb = _ocr_row_crops_grouped(
+            bgr,
+            ocr,
+            scale=2,
+            top_frac=top_frac,
+            rows_per_page=SEARCH_RESULT_ROWS,
+        )
         rows_fb = _parse_from_grouped_items(
             grouped_fb,
             bgr=bgr,

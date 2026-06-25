@@ -48,15 +48,10 @@ class SearchScanner:
         )
 
     def _validate_rois(self) -> None:
-        if REGION_SEARCH_BOX not in self._roi.regions:
+        if REGION_MARKET_WINDOW not in self._roi.regions:
             raise SystemExit(
-                f"Missing search_box in {self.config.roi_path}\n"
-                "Press C+1 in daemon or run: python -m cli calibrate search"
-            )
-        if REGION_BACK_BUTTON not in self._roi.regions:
-            raise SystemExit(
-                f"Missing back_button in {self.config.roi_path}\n"
-                "Press C+4 in daemon or run: python -m cli calibrate back"
+                f"Missing market_window in {self.config.roi_path}\n"
+                "Press C+1 in daemon or run: python -m cli calibrate"
             )
 
     def load_items(self) -> list[ItemRef]:

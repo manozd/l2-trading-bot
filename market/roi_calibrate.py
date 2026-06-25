@@ -12,10 +12,7 @@ from tkinter import messagebox
 
 from market.capture_rois import (
     DEFAULT_MARKET_ROI_PATH,
-    REGION_BACK_BUTTON,
     REGION_MARKET_WINDOW,
-    REGION_NEXT_PAGE,
-    REGION_SEARCH_BOX,
     MarketRoiConfig,
     RoiRect,
     load_market_roi_config,
@@ -23,30 +20,15 @@ from market.capture_rois import (
 )
 
 _CALIB_STEP_TITLE: dict[str, str] = {
-    REGION_MARKET_WINDOW: "Market window — full item list area",
-    REGION_NEXT_PAGE: "Next page — pagination button",
-    REGION_SEARCH_BOX: "Search box — item name filter field",
-    REGION_BACK_BUTTON: "Back button — return after viewing search results",
+    REGION_MARKET_WINDOW: "Market window — full Buy Item window",
 }
 
 _CALIB_STEP_HINT: dict[str, str] = {
-    REGION_SEARCH_BOX: (
-        "Drag a box on the **search / filter** text field at the top of the market list.\n\n"
-        "Game must show Buy Item with the search box visible (Equipment or Full List)."
-    ),
     REGION_MARKET_WINDOW: (
         "Drag a box around the **entire Buy Item window** — from the title bar down to "
         "the Back button.\n\n"
-        "Game must be on Buy Item → Full List (or category list). "
-        "The bot skips title and pagination areas automatically."
-    ),
-    REGION_NEXT_PAGE: (
-        "Drag a small box on the **Next page** button (or arrow) at the bottom of the market window. "
-        "The bot moves the PC cursor here and the Pico sends the left click."
-    ),
-    REGION_BACK_BUTTON: (
-        "Drag a box on the **Back** button (returns from item search results to the search screen).\n\n"
-        "Open Buy Item and run one search so the Back button is visible, then calibrate."
+        "Game must show Buy Item (search hub or Full List). "
+        "Search box, Next page, and Back are placed automatically inside this window."
     ),
 }
 
@@ -253,8 +235,10 @@ def _load_existing_regions(output_path: Path) -> tuple[dict[str, RoiRect], int]:
     if output_path.is_file():
         try:
             cfg = load_market_roi_config(output_path)
-            regions = dict(cfg.regions)
             mon = int(cfg.monitor)
+            market = cfg.regions.get(REGION_MARKET_WINDOW)
+            if market is not None:
+                regions = {REGION_MARKET_WINDOW: market}
         except (ValueError, KeyError, json.JSONDecodeError):
             pass
     return regions, mon
@@ -268,15 +252,18 @@ def run_region_calibration(
     capture_delay_s: float = 2.0,
     live_alpha: float = 0.5,
 ) -> bool:
-    """Calibrate a single ROI region. Returns True if saved."""
-    if region_key not in _CALIB_STEP_HINT:
-        raise ValueError(f"Unknown region {region_key!r}")
+    """Calibrate the market window (only region stored; UI controls are derived)."""
+    if region_key != REGION_MARKET_WINDOW:
+        print(
+            f"[calibrate] {region_key!r} is derived from market_window — calibrating window instead",
+            flush=True,
+        )
 
     regions, mon = _load_existing_regions(output_path)
     if monitor_index is not None:
         mon = int(monitor_index)
 
-    steps = [(region_key, _CALIB_STEP_HINT[region_key])]
+    steps = [(REGION_MARKET_WINDOW, _CALIB_STEP_HINT[REGION_MARKET_WINDOW])]
     ok = _run_wizard_live_overlay(
         monitor_index=mon,
         output_path=output_path,
@@ -286,7 +273,7 @@ def run_region_calibration(
         initial_regions=regions,
     )
     if not ok:
-        print(f"[calibrate] cancelled — {region_key}", flush=True)
+        print("[calibrate] cancelled — market_window", flush=True)
     return ok
 
 
@@ -297,34 +284,12 @@ def run_market_calibration_wizard(
     capture_delay_s: float = 5.0,
     live_alpha: float = 0.5,
 ) -> None:
-    """Calibrate ``market_window`` then ``next_page`` for Full List pagination."""
-    regions: dict[str, RoiRect] = {}
-    mon = int(monitor_index)
-    if output_path.is_file():
-        try:
-            cfg = load_market_roi_config(output_path)
-            regions = dict(cfg.regions)
-            mon = int(cfg.monitor)
-        except (ValueError, KeyError, json.JSONDecodeError):
-            pass
-
-    steps: list[tuple[str, str]] = [
-        (
-            REGION_MARKET_WINDOW,
-            _CALIB_STEP_HINT[REGION_MARKET_WINDOW],
-        ),
-        (
-            REGION_NEXT_PAGE,
-            "Drag a small box on the **Next page** button (or arrow) at the bottom of the market window. "
-            "The bot moves the PC cursor here and the Pico sends the left click.",
-        ),
-    ]
-    if not _run_wizard_live_overlay(
-        monitor_index=mon,
+    """Calibrate the Buy Item market window (search / next / back are derived)."""
+    if not run_region_calibration(
+        REGION_MARKET_WINDOW,
+        monitor_index=monitor_index,
         output_path=output_path,
-        steps=steps,
         capture_delay_s=capture_delay_s,
         live_alpha=live_alpha,
-        initial_regions=regions,
     ):
-        raise SystemExit("Calibration cancelled before finishing all steps.")
+        raise SystemExit("Calibration cancelled.")

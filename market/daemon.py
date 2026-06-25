@@ -10,10 +10,7 @@ from typing import Literal
 
 from market.capture_rois import (
     DEFAULT_MARKET_ROI_PATH,
-    REGION_BACK_BUTTON,
     REGION_MARKET_WINDOW,
-    REGION_NEXT_PAGE,
-    REGION_SEARCH_BOX,
     load_market_roi_config,
 )
 from market.constants import DEFAULT_PICO_COM
@@ -37,10 +34,10 @@ Mode = Literal["search", "bulk", "craft"]
 State = Literal["paused", "running", "calibrating"]
 
 _CALIB_BY_HOTKEY: dict[str, str] = {
-    "calib:1": REGION_SEARCH_BOX,
+    "calib:1": REGION_MARKET_WINDOW,
     "calib:2": REGION_MARKET_WINDOW,
-    "calib:3": REGION_NEXT_PAGE,
-    "calib:4": REGION_BACK_BUTTON,
+    "calib:3": REGION_MARKET_WINDOW,
+    "calib:4": REGION_MARKET_WINDOW,
 }
 
 
@@ -298,7 +295,7 @@ class MarketDaemon:
         if mon is None:
             mon = 1
 
-        label = region_key.replace("_", " ")
+        label = "market window"
         print(f"[daemon] calibrate {label} — overlay in {cfg.calibrate_delay_s:.0f}s", flush=True)
         self._state = "calibrating"
         try:
@@ -310,7 +307,10 @@ class MarketDaemon:
                 live_alpha=cfg.live_alpha,
             )
             if ok:
-                print(f"[daemon] saved {region_key} → {cfg.roi_path}", flush=True)
+                print(
+                    f"[daemon] saved market_window (+ derived search/next/back) → {cfg.roi_path}",
+                    flush=True,
+                )
         finally:
             self._state = "paused"
             self._print_status()
@@ -319,8 +319,8 @@ class MarketDaemon:
         print(
             f"\n[daemon] PAUSED — Pico {self.config.pico_com}\n"
             "  Calibration (anytime):\n"
-            "    C+1  search box      C+2  market list\n"
-            "    C+3  next page       C+4  back button\n"
+            "    C+1  market window (search / next / back derived automatically)\n"
+            "    C+2..4  same as C+1\n"
             "  Mode (while paused):\n"
             "    M+1  search scan     M+2  bulk scan\n"
             "    M+3  craft cost — enter item name in dialog\n"

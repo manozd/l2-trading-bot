@@ -106,13 +106,47 @@ def is_ui_chrome_row(row: MarketRow) -> bool:
         return True
     if item.startswith("full list"):
         return True
-    if "equipment" in item and len(item) < 24:
+    compact = _compact(item)
+    hub_frags = (
+        "equipment",
+        "enchanted",
+        "consumables",
+        "materials",
+        "materialparts",
+        "recipes",
+        "other",
+        "fulllist",
+    )
+    hub_hits = sum(1 for frag in hub_frags if frag in compact)
+    if hub_hits >= 2:
+        return True
+    if hub_hits == 1 and not item.startswith("recipe:") and row.price_adena is None:
+        return True
+    if "equipment" in item and "recipe:" not in item and len(item) < 40:
         return True
     return False
 
 
 def filter_search_result_rows(rows: list[MarketRow]) -> list[MarketRow]:
     return [r for r in rows if not is_ui_chrome_row(r)]
+
+
+def is_likely_search_hub(rows: list[MarketRow]) -> bool:
+    """Category hub (Equipment, Materials, …) — not filtered item search results."""
+    if not rows:
+        return False
+    if filter_search_result_rows(rows):
+        return False
+    return all(is_ui_chrome_row(r) for r in rows)
+
+
+def on_search_results_screen(rows: list[MarketRow]) -> bool:
+    """True when the item search-results list is showing (not the category hub)."""
+    if filter_search_result_rows(rows):
+        return True
+    if not rows or is_likely_search_hub(rows):
+        return False
+    return True
 
 
 def _extract_grade(name: str) -> str | None:
@@ -158,6 +192,11 @@ def _match_score(row_item: str, target_name: str) -> int:
     if item == target:
         return 100
 
+    target_grade = _extract_grade(target)
+    row_grade = _extract_grade(item)
+    if target_grade and row_grade != target_grade:
+        return 0
+
     ci = _compact(row_item)
     ct = _compact(target_name)
     if ci and ct:
@@ -183,11 +222,7 @@ def _match_score(row_item: str, target_name: str) -> int:
     if target.startswith(item) and len(item) >= len(target) - 4:
         return 92
 
-    target_grade = _extract_grade(target)
-    row_grade = _extract_grade(item)
     if target_grade:
-        if row_grade != target_grade:
-            return 0
         base_item = _strip_grade(item)
         base_target = _strip_grade(target)
         if base_item == base_target:
@@ -256,6 +291,22 @@ def _pick_sort_key(row: MarketRow, target_search_name: str, score: int) -> tuple
     return (score, exact_case, not_recipe, not_chrome, -name_len, -row.row)
 
 
+def _score_row_match(
+    item: str,
+    target_search_name: str,
+    *,
+    search_query: str | None = None,
+) -> int:
+    """Match OCR row to target; optional query fallback only when grade is unambiguous."""
+    score = _match_score(item, target_search_name)
+    query = search_query or target_search_name
+    if query == target_search_name or score >= _MIN_ACCEPT_SCORE:
+        return score
+    if _extract_grade(target_search_name):
+        return score
+    return max(score, _match_score(item, query) - 5)
+
+
 def pick_result_row(
     rows: list[MarketRow],
     target_search_name: str,
@@ -279,9 +330,7 @@ def pick_result_row(
     scored: list[tuple[tuple, MarketRow]] = []
     for row in rows:
         item = row.item or ""
-        score = _match_score(item, target_search_name)
-        if score <= 0 and query != target_search_name:
-            score = max(score, _match_score(item, query) - 5)
+        score = _score_row_match(item, target_search_name, search_query=query)
         if score >= _MIN_ACCEPT_SCORE:
             scored.append((_pick_sort_key(row, target_search_name, score), row))
 
@@ -291,9 +340,57 @@ def pick_result_row(
     scored.sort(key=lambda t: t[0], reverse=True)
     best_key, best_row = scored[0]
     if len(scored) > 1 and scored[1][0] == best_key:
-        return _weak_single_word_fallback(rows, target_search_name, query)
+        tied = [row for key, row in scored if key == best_key]
+        return min(tied, key=lambda r: r.row)
 
     return best_row
+
+
+def find_search_result_price_row(
+    rows: list[MarketRow],
+    target_search_name: str,
+    *,
+    search_query: str | None = None,
+) -> MarketRow | None:
+    """Best matching row on the search-results screen that already shows a min price."""
+    query = search_query or target_search_name
+    picked = pick_result_row(rows, target_search_name, search_query=query)
+    if (
+        picked is not None
+        and picked.price_adena is not None
+        and picked.price_adena >= 50
+        and not is_ui_chrome_row(picked)
+    ):
+        return picked
+
+    candidates: list[tuple[int, MarketRow]] = []
+    for row in filter_search_result_rows(rows):
+        if row.price_adena is None or row.price_adena < 50:
+            continue
+        item = row.item or ""
+        score = _score_row_match(item, target_search_name, search_query=query)
+        if score >= _MIN_ACCEPT_SCORE:
+            candidates.append((score, row))
+    if not candidates:
+        return None
+    candidates.sort(key=lambda t: t[0], reverse=True)
+    return candidates[0][1]
+
+
+def visual_click_row(visible: list[MarketRow], picked: MarketRow | None) -> int:
+    """1-based visual row index for clicking (not OCR band number)."""
+    ordered = sorted(visible, key=lambda r: r.row)
+    if not ordered:
+        return 1
+    if picked is None:
+        return 1
+    for i, row in enumerate(ordered):
+        if row.row == picked.row and (row.item or "") == (picked.item or ""):
+            return i + 1
+    for i, row in enumerate(ordered):
+        if row.row == picked.row:
+            return i + 1
+    return 1
 
 
 def format_result_rows(rows: list[MarketRow]) -> str:

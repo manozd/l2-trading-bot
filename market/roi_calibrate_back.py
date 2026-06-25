@@ -1,25 +1,25 @@
-"""Add back_button ROI to an existing market_rois.json."""
+"""Calibrate back button — redirects to market window calibration."""
 
 from __future__ import annotations
 
 from pathlib import Path
 
-from market.capture_rois import DEFAULT_MARKET_ROI_PATH, REGION_BACK_BUTTON
+from market.capture_rois import DEFAULT_MARKET_ROI_PATH, REGION_MARKET_WINDOW
 from market.roi_calibrate import run_region_calibration
 
 
 def run_back_button_calibration(
     *,
     monitor_index: int,
-    output_path: Path,
-    capture_delay_s: float = 5.0,
+    output_path: Path = DEFAULT_MARKET_ROI_PATH,
+    capture_delay_s: float = 2.0,
     live_alpha: float = 0.5,
-) -> None:
-    if not run_region_calibration(
-        REGION_BACK_BUTTON,
+) -> bool:
+    print("[calibrate] back_button is derived from market_window", flush=True)
+    return run_region_calibration(
+        REGION_MARKET_WINDOW,
         monitor_index=monitor_index,
         output_path=output_path,
         capture_delay_s=capture_delay_s,
         live_alpha=live_alpha,
-    ):
-        raise SystemExit("Calibration cancelled before finishing all steps.")
+    )

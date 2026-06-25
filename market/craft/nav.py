@@ -8,7 +8,7 @@ from typing import Literal
 from market.capture import grab_screen_rect
 from market.capture_rois import REGION_MARKET_WINDOW, RoiRect, load_market_roi_config
 from market.craft.match import filter_search_result_rows, is_ui_chrome_row
-from market.full_list_parser import MarketRow, parse_page_rows, parse_search_result_rows
+from market.full_list_parser import MarketRow, parse_page_rows
 from market.ocr_engine import get_ocr_engine
 from market.pico_hid import PicoHidSerial
 from market.run_control import RunControl, StopRequested, sleep_checked
@@ -23,6 +23,19 @@ _HUB_TEXT_MARKERS = (
     "buy items",
     "buy item",
 )
+_HUB_CATEGORY_MARKERS = ("equipment", "materials", "consumables", "other")
+
+
+def frame_has_hub_categories(bgr, ocr) -> bool:
+    """Detect category hub from full-window OCR (no search-result listing text)."""
+    from market.ocr_engine import run_ocr
+
+    texts = [text for _box, text, _score in run_ocr(ocr, bgr)]
+    blob = " ".join(texts).casefold()
+    if any(marker in blob for marker in _HUB_TEXT_MARKERS):
+        return True
+    hits = sum(1 for cat in _HUB_CATEGORY_MARKERS if cat in blob)
+    return hits >= 2
 
 _NAV_BACK_GAP_S = 0.30
 
@@ -43,10 +56,15 @@ def _has_hub_markers(rows: list[MarketRow]) -> bool:
 
 def _is_vendor_list(vendor_rows: list[MarketRow]) -> bool:
     priced = [r for r in vendor_rows if r.price_adena is not None]
+    if len(priced) >= 5:
+        return True
     if len(priced) >= 2:
         return True
     if len(priced) == 1:
         row = priced[0]
+        raw = (row.raw_text or "").casefold()
+        if "min. price" in raw:
+            return False
         if row.vendor and row.price_adena is not None and row.price_adena >= 50:
             return True
         if row.price_adena is not None and row.units is not None and row.price_adena >= 50:
@@ -74,16 +92,15 @@ def detect_market_screen(roi_path: Path) -> MarketScreen:
     frame = grab_screen_rect(market.left, market.top, market.width, market.height)
     ocr = get_ocr_engine()
 
-    vendor_rows = parse_page_rows(frame.bgr, page=1, ocr=ocr)
-    search_rows = parse_search_result_rows(frame.bgr, page=1, ocr=ocr)
+    rows = parse_page_rows(frame.bgr, page=1, ocr=ocr)
 
-    if _has_hub_markers(search_rows) or _has_hub_markers(vendor_rows):
+    if _has_hub_markers(rows):
         return "hub"
 
-    if _is_vendor_list(vendor_rows):
+    if _is_vendor_list(rows):
         return "vendor_list"
 
-    if _is_search_results(search_rows):
+    if _is_search_results(rows):
         return "search_results"
 
     return "hub"

@@ -1,30 +1,12 @@
 {
-  "version": 1,
+  "version": 2,
   "monitor": 1,
   "regions": {
     "market_window": {
-      "left": 812,
-      "top": 349,
-      "width": 352,
-      "height": 406
-    },
-    "next_page": {
-      "left": 1014,
-      "top": 699,
-      "width": 14,
-      "height": 15
-    },
-    "search_box": {
-      "left": 874,
-      "top": 428,
-      "width": 158,
-      "height": 23
-    },
-    "back_button": {
-      "left": 889,
-      "top": 722,
-      "width": 198,
-      "height": 28
+      "left": 591,
+      "top": 289,
+      "width": 353,
+      "height": 405
     }
   }
 }

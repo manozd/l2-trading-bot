@@ -33,7 +33,7 @@ class BulkScanner:
         cfg = self.config
         if not cfg.roi_path.is_file():
             raise SystemExit(
-                f"Missing {cfg.roi_path}\nPress C+2/C+3 in daemon or: python -m cli calibrate market"
+                f"Missing {cfg.roi_path}\nPress C+1 in daemon or: python -m cli calibrate"
             )
         if not cfg.dry_run and not cfg.pico_com:
             raise SystemExit(f"Pico port required (default: {DEFAULT_PICO_COM})")
