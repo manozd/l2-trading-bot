@@ -155,7 +155,7 @@ class CraftCostReport:
     convenience_cost_per_attempt: int = 0
     convenience_expected_cost_per_success: int = 0
     convenience_premium_pct: float = 0.0
-    buy_premium_threshold: float = 0.20
+    buy_premium_threshold: float = 0.30
 
     def to_dict(self) -> dict[str, Any]:
         out: dict[str, Any] = {

@@ -220,6 +220,36 @@ def _collect_plan_diffs(
     return rows
 
 
+def _print_plan_summary(
+    *,
+    material_cost: int,
+    expected_cost: int,
+    min_material: int,
+    min_expected: int,
+) -> None:
+    premium_note = (
+        f"+{_premium_pct_vs(min_material, material_cost)}% vs minimum"
+        if material_cost > min_material
+        else "same as minimum"
+    )
+    print(
+        f"  Materials:        {format_adena(material_cost)} ({premium_note})",
+        flush=True,
+    )
+    delta = expected_cost - min_expected
+    delta_note = f"+{format_adena(delta)} vs minimum" if delta > 0 else "same as minimum"
+    print(
+        f"  Expected/success: {format_adena(expected_cost)} ({delta_note})",
+        flush=True,
+    )
+
+
+def _premium_pct_vs(base: int, other: int) -> float:
+    if base <= 0 or other == base:
+        return 0.0
+    return round(100 * (other - base) / base, 1)
+
+
 def _print_plan_diff(min_lines: list[CostLine], conv_lines: list[CostLine]) -> None:
     switches: list[str] = []
     conv_by_id = {ln.item_id: ln for ln in conv_lines}
@@ -265,23 +295,12 @@ def print_craft_report(report: CraftCostReport) -> None:
             f"\n  --- Time-saver plan (buy intermediate if market ≤ +{pct:.0f}% vs craft) ---",
             flush=True,
         )
-        premium_note = (
-            f"+{report.convenience_premium_pct}% vs minimum"
-            if report.convenience_premium_pct > 0
-            else "same as minimum"
+        _print_plan_summary(
+            material_cost=report.convenience_material_cost,
+            expected_cost=report.convenience_expected_cost_per_success,
+            min_material=report.material_cost,
+            min_expected=report.expected_cost_per_success,
         )
-        print(
-            f"  Materials:        {format_adena(report.convenience_material_cost)} ({premium_note})",
-            flush=True,
-        )
-        delta = report.convenience_expected_cost_per_success - report.expected_cost_per_success
-        delta_note = f"+{format_adena(delta)} vs minimum" if delta > 0 else "same as minimum"
-        print(
-            f"  Expected/success: {format_adena(report.convenience_expected_cost_per_success)} "
-            f"({delta_note})",
-            flush=True,
-        )
-        conv_by_id = {ln.item_id: ln for ln in report.convenience_lines}
         min_by_id = {ln.item_id: ln for ln in report.lines}
         for line in report.convenience_lines:
             _print_component_plan_conv(line, compare_line=min_by_id.get(line.item_id))

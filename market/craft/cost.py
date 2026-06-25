@@ -9,7 +9,7 @@ from market.craft.models import CostLine, CraftCostReport, MaterialPrice, Recipe
 CostMode = Literal["min", "premium"]
 
 # Prefer buying an intermediate on market when buy ≤ craft × (1 + premium).
-DEFAULT_BUY_PREMIUM = 0.20
+DEFAULT_BUY_PREMIUM = 0.30
 
 
 def _price_for(prices: dict[str, MaterialPrice], item_id: str) -> int | None:
@@ -109,6 +109,12 @@ def _build_lines(
     return lines, missing, material_cost
 
 
+def _premium_pct_vs(base: int, other: int) -> float:
+    if base <= 0 or other == base:
+        return 0.0
+    return round(100 * (other - base) / base, 1)
+
+
 def compute_craft_cost(
     recipe: Recipe,
     prices: dict[str, MaterialPrice],
@@ -129,11 +135,6 @@ def compute_craft_cost(
     rate = recipe.success_rate if recipe.success_rate > 0 else 1.0
     expected = int(cost_per_attempt / rate) if cost_per_attempt > 0 else 0
     conv_expected = int(conv_cost_per_attempt / rate) if conv_cost_per_attempt > 0 else 0
-    conv_premium_pct = (
-        round(100 * (conv_material - material_cost) / material_cost, 1)
-        if material_cost > 0 and conv_material != material_cost
-        else 0.0
-    )
 
     return CraftCostReport(
         recipe_id=recipe.recipe_id,
@@ -150,6 +151,6 @@ def compute_craft_cost(
         convenience_material_cost=conv_material,
         convenience_cost_per_attempt=conv_cost_per_attempt,
         convenience_expected_cost_per_success=conv_expected,
-        convenience_premium_pct=conv_premium_pct,
+        convenience_premium_pct=_premium_pct_vs(material_cost, conv_material),
         buy_premium_threshold=buy_premium,
     )
