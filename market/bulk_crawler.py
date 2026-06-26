@@ -28,7 +28,7 @@ from market.page_fingerprint import (
     list_icon_fingerprint_body,
     page_unchanged,
 )
-from market.pagination import ListPageTracker, is_reliable_last_page, read_page_indicator_robust
+from market.pagination import ListPageTracker, read_page_indicator_robust
 from market.pico_hid import PicoHidSerial
 from market.run_control import RunControl, StopRequested, check_stop, sleep_checked
 from market.search import park_cursor_for_ocr, park_cursor_on_back, press_back_button
@@ -375,18 +375,6 @@ def crawl_market_vendors(
             )
             if stop:
                 print(f"[bulk-crawl] stopping list pagination — {reason}", flush=True)
-                break
-
-            if is_reliable_last_page(indicator) or (
-                list_page_total_hint is not None
-                and list_page_total_hint >= 5
-                and list_page >= list_page_total_hint
-            ):
-                print(
-                    f"[bulk-crawl] stopping list pagination — "
-                    f"last page ({list_page}/{list_page_total_hint or '?'})",
-                    flush=True,
-                )
                 break
 
             if dry_run:

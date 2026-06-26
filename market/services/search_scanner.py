@@ -12,7 +12,7 @@ from market.core.models import ItemRef, SearchResult, SearchRunConfig
 from market.countdown import wait_before_start
 from market.pico_hid import PicoHidSerial
 from market.search import press_back_button, submit_search_query
-from market.search_recovery import detect_search_list_state, recover_to_search_hub
+from market.search_recovery import clear_search_filter, detect_search_list_state
 from market.search_progress import M2_MODE_VERSION, SearchProgressStore, target_config_hash
 from market.services.priority_scan import (
     catalog_scan_phase,
@@ -199,6 +199,7 @@ class SearchScanner:
                             pico=pico,
                             settle_s=cfg.search_settle_s,
                             input_mode=cfg.input_mode,
+                            fast=True,
                             run_control=self._run_control,
                         )
                         raw_rows = collect_search_rows_with_retry(
@@ -210,22 +211,28 @@ class SearchScanner:
                         if raw_rows:
                             used_query = query
                             break
+                        if qi == 0 and not raw_rows:
+                            list_state = (
+                                detect_search_list_state(roi_path=cfg.roi_path.resolve())
+                                if not cfg.dry_run
+                                else "empty_list"
+                            )
+                            if list_state == "empty_list" or item.search_name.casefold().startswith(
+                                "recipe:"
+                            ):
+                                print(
+                                    f"[search] sold out — exact search returned no listings "
+                                    f"for {item.search_name!r} (skipping broader fallbacks)",
+                                    flush=True,
+                                )
+                                break
 
                 not_on_market = not raw_rows
-                if not_on_market and not cfg.dry_run:
-                    list_state = detect_search_list_state(roi_path=cfg.roi_path.resolve())
-                    if list_state == "empty_list":
-                        print(
-                            f"[search] not on market — no listings for {item.search_name!r} "
-                            "(empty search results)",
-                            flush=True,
-                        )
-                    else:
-                        print(
-                            f"[search] not on market — no listings for {item.search_name!r} "
-                            f"(list state: {list_state})",
-                            flush=True,
-                        )
+                if not_on_market:
+                    print(
+                        f"[search] not on market — no listings for {item.search_name!r}",
+                        flush=True,
+                    )
 
                 print(f"[search] catalog_scan — {len(raw_rows)} visible variant row(s)", flush=True)
                 catalog_uids = catalog_scan_phase(
@@ -290,11 +297,9 @@ class SearchScanner:
                     check_stop(self._run_control)
                     assert pico is not None
                     if not_on_market:
-                        recover_to_search_hub(
-                            back=self._back,
+                        clear_search_filter(
                             search=self._search,
                             pico=pico,
-                            back_settle_s=cfg.back_settle_s,
                             run_control=self._run_control,
                         )
                     else:
@@ -302,6 +307,7 @@ class SearchScanner:
                             back=self._back,
                             pico=pico,
                             settle_s=cfg.back_settle_s,
+                            fast=True,
                             run_control=self._run_control,
                         )
         except StopRequested:

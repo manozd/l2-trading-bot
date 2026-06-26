@@ -68,6 +68,32 @@ def click_roi(
     sleep_checked(settle_s, run_control=run_control)
 
 
+def _move_to_roi(
+    roi: RoiRect,
+    *,
+    fast: bool = False,
+    run_control: RunControl | None = None,
+) -> None:
+    cx, cy = roi.center_screen()
+    smooth_move_to(cx, cy, duration_s=0.1 if fast else 0.24, steps=6 if fast else 18, sync=not fast)
+    sleep_checked(0.03 if fast else 0.08, run_control=run_control)
+
+
+def focus_clear_search_box(
+    search: RoiRect,
+    pico: PicoHidSerial,
+    *,
+    settle_s: float = 0.15,
+    fast: bool = True,
+    run_control: RunControl | None = None,
+) -> None:
+    """Move to search box, double-click to select all, one BACKSPACE to clear."""
+    check_stop(run_control)
+    _move_to_roi(search, fast=fast, run_control=run_control)
+    pico.clear_search_text(run_control=run_control, fast=fast)
+    sleep_checked(settle_s, run_control=run_control)
+
+
 def clear_search_field(
     search: RoiRect,
     pico: PicoHidSerial,
@@ -76,20 +102,13 @@ def clear_search_field(
     run_control: RunControl | None = None,
 ) -> None:
     """Focus search box and wipe stale filter text before the next query."""
-    check_stop(run_control)
-    click_roi(
+    focus_clear_search_box(
         search,
         pico,
-        label="search box (clear)",
-        settle_s=0.15,
+        settle_s=settle_s,
         fast=True,
         run_control=run_control,
     )
-    sleep_checked(0.06, run_control=run_control)
-    pico.click_left(hold_ms=80, double=True)
-    sleep_checked(0.08, run_control=run_control)
-    pico.clear_field(backspaces=96, run_control=run_control)
-    sleep_checked(settle_s, run_control=run_control)
 
 
 def focus_search_box(
@@ -128,17 +147,23 @@ def submit_search_query(
     """Click search box, enter text, Pico Enter to apply filter."""
     check_stop(run_control)
     use_pico_clear = input_mode == INPUT_PICO
-    focus_search_box(
-        search,
-        pico,
-        settle_s=0.2 if fast else 0.25,
-        fast=fast,
-        clear=False,
-        run_control=run_control,
-    )
     if use_pico_clear:
-        pico.clear_field(backspaces=96, run_control=run_control)
-        sleep_checked(0.08, run_control=run_control)
+        focus_clear_search_box(
+            search,
+            pico,
+            settle_s=0.12 if fast else 0.15,
+            fast=fast,
+            run_control=run_control,
+        )
+    else:
+        focus_search_box(
+            search,
+            pico,
+            settle_s=0.2 if fast else 0.25,
+            fast=fast,
+            clear=False,
+            run_control=run_control,
+        )
 
     if input_mode == INPUT_PASTE:
         print("[search] clipboard set + PC Ctrl+A/V (often blocked in L2 / GameGuard)", flush=True)
@@ -157,6 +182,8 @@ def submit_search_query(
             if pico_strips_characters(query):
                 print("[search] pico typing with SPACE/symbols (requires updated firmware)", flush=True)
             print(f"[search] pico typing {query!r}", flush=True)
+        elif use_pico_clear:
+            print(f"[search] clear + type {query!r}", flush=True)
         pico.type_search_text(query, run_control=run_control)
         if not fast:
             print("[search] pico typed", flush=True)
@@ -165,7 +192,8 @@ def submit_search_query(
     pico.key_enter()
     if not fast:
         print("[search] pico KEY ENTER", flush=True)
-    sleep_checked(settle_s, run_control=run_control)
+    post_settle = min(settle_s, 0.32) if fast else settle_s
+    sleep_checked(post_settle, run_control=run_control)
 
 
 def press_back_button(

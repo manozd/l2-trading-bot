@@ -80,5 +80,4 @@ def _load_yaml_refs(path: Path) -> list[ItemRef]:
                 continue
             seen.add(kid)
             refs.append(ItemRef(item_id=kid, search_name=name, category=str(cat)))
-    refs.sort(key=lambda r: (r.category or "", r.search_name.casefold()))
     return refs

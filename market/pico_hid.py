@@ -52,15 +52,26 @@ class PicoHidSerial:
         """Hardware Enter (GameGuard-safe). Needs updated Pico firmware."""
         self.key_named("ENTER")
 
-    def clear_field(self, *, backspaces: int = 80, run_control=None) -> None:
+    def clear_field(self, *, backspaces: int = 80, run_control=None, fast: bool = False) -> None:
         """Delete text in the focused field via BACKSPACE (requires Pico firmware with BACKSPACE)."""
         from market.run_control import check_stop
 
         n = max(0, int(backspaces))
+        gap = 0.012 if fast else 0.018
         for _ in range(n):
             check_stop(run_control)
             self.key_named("BACKSPACE")
-            time.sleep(0.018)
+            time.sleep(gap)
+
+    def clear_search_text(self, *, run_control=None, fast: bool = False) -> None:
+        """Double-click to select all text in the focused field, then one BACKSPACE."""
+        from market.run_control import check_stop
+
+        check_stop(run_control)
+        self.click_left(hold_ms=70, double=True)
+        time.sleep(0.05 if fast else 0.08)
+        self.key_named("BACKSPACE")
+        time.sleep(0.03 if fast else 0.05)
 
     def key_tap_char(self, ch: str) -> None:
         if len(ch) != 1:

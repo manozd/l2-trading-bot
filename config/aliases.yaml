@@ -1,0 +1,9 @@
+# Shorthand / alternate search strings → canonical market name.
+# Beats fuzzy prefix matching in CanonicalNameIndex.
+# Keys are case-insensitive.
+
+aliases:
+  Gemstone S: "Gemstone (S-grade)"
+  Gemstone A: "Gemstone (A-grade)"
+  col: "Coin of Luck"
+  aa: "Ancient Adena"

@@ -1,4 +1,4 @@
-"""Detect empty search results and recover to the search hub."""
+"""Detect empty search results and recover to the unfiltered market hub."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from market.icon_hash import row_icon_slot_occupied
 from market.page_fingerprint import list_body_bgr
 from market.pico_hid import PicoHidSerial
 from market.run_control import RunControl, check_stop, sleep_checked
-from market.search import clear_search_field, press_back_button
+from market.search import focus_clear_search_box
 
 SearchListState = Literal["has_items", "empty_list", "unreadable"]
 
@@ -53,28 +53,27 @@ def detect_search_list_state(*, roi_path) -> SearchListState:
     return "empty_list"
 
 
-def recover_to_search_hub(
+def clear_search_filter(
     *,
-    back: RoiRect,
     search: RoiRect,
     pico: PicoHidSerial,
-    back_settle_s: float = 0.35,
     run_control: RunControl | None = None,
+    settle_s: float = 0.28,
 ) -> None:
     """
-    Leave a filtered (possibly empty) results screen and clear the search bar.
+    Clear the market search bar and apply an empty filter (Enter).
 
-    Typical flow: Back once to hub, then select-all/clear search field so the next
-    query does not append to stale text.
+    Stay on the market hub — do **not** press Back. After a sold-out / empty
+    search the hub is already open with stale filter text; Back exits the market.
     """
     check_stop(run_control)
-    print("[search] recover — back to hub and clear search bar", flush=True)
-    press_back_button(
-        back=back,
-        pico=pico,
-        settle_s=back_settle_s,
+    print("[search] recover — clear search filter", flush=True)
+    focus_clear_search_box(
+        search,
+        pico,
+        settle_s=0.12,
         fast=True,
         run_control=run_control,
     )
-    sleep_checked(0.18, run_control=run_control)
-    clear_search_field(search, pico, run_control=run_control)
+    pico.key_enter()
+    sleep_checked(settle_s, run_control=run_control)

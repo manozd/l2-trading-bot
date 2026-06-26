@@ -15,7 +15,8 @@ from market.scanner import collect_search_page_rows
 from market.variant_catalog import VariantCatalog, make_item_uid
 
 PRICE_SOURCE_MATCHED_ROW = "search_results_matched_row"
-_SEARCH_RETRY_S = 0.35
+_SEARCH_LIST_RENDER_S = 0.22
+_SEARCH_RETRY_S = 0.18
 
 
 def fallback_search_queries(search_name: str) -> list[str]:
@@ -40,11 +41,14 @@ def fallback_search_queries(search_name: str) -> list[str]:
     add(search_name)
     if " - " in search_name:
         add(search_name.split(" - ", 1)[0].strip())
-    if ": " in search_name:
-        add(search_name.split(": ", 1)[0].strip())
+    # "Recipe: Foo" → "Recipe" matches hundreds of listings; never broaden recipe names.
+    if ": " in search_name and not search_name.casefold().startswith("recipe:"):
+        prefix = search_name.split(": ", 1)[0].strip()
+        if prefix.casefold() != "recipe":
+            add(prefix)
     # Long armor names — try dropping the last word (Breastplate / Armor piece).
     parts = search_name.split()
-    if len(parts) >= 3:
+    if len(parts) >= 3 and not search_name.casefold().startswith("recipe:"):
         add(" ".join(parts[:-1]))
     return out
 
@@ -58,6 +62,7 @@ def collect_search_rows_with_retry(
 ) -> list[dict[str, Any]]:
     """OCR search results; one short retry when the list is still loading."""
     check_stop(run_control)
+    sleep_checked(_SEARCH_LIST_RENDER_S, run_control=run_control)
     rows = collect_search_page_rows(
         roi_path=roi_path,
         category=category,

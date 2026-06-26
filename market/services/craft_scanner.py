@@ -529,11 +529,18 @@ class CraftPriceScanner:
         for mat in materials:
             mp = prices.get(mat.item_id)
             if mp and mp.source == "trusted_grouped" and mat.item_id not in self._need_live_ids:
-                print(
-                    f"[craft-cost]   trusted {mat.search_name!r} @ {mp.unit_price_adena:,} adena"
-                    f" ({mp.vendor or '?'}) - skip crawl",
-                    flush=True,
-                )
+                if mp.availability == AVAILABILITY_NOT_ON_MARKET:
+                    print(
+                        f"[craft-cost]   trusted {mat.search_name!r} — not on market "
+                        f"(fresh M+2 check) - skip crawl",
+                        flush=True,
+                    )
+                elif mp.unit_price_adena is not None:
+                    print(
+                        f"[craft-cost]   trusted {mat.search_name!r} @ {mp.unit_price_adena:,} adena"
+                        f" ({mp.vendor or '?'}) - skip crawl",
+                        flush=True,
+                    )
             elif mat.item_id in self._need_live_ids and mp and mp.source == "trusted_grouped":
                 print(
                     f"[craft-cost]   trusted partial {mat.search_name!r} - will crawl vendors",
@@ -545,8 +552,13 @@ class CraftPriceScanner:
                 recipe_id=recipe.recipe_id,
                 search_name=recipe.search_name,
             )
-            if finished_hit and not lookup.is_stale(
-                finished_hit, max_age_hours=self.trusted_max_age_hours,
+            if (
+                finished_hit
+                and not finished_hit.is_not_found
+                and finished_hit.min_price is not None
+                and not lookup.is_stale(
+                    finished_hit, max_age_hours=self.trusted_max_age_hours,
+                )
             ):
                 finished_key = f"{self.recipe_id}_finished"
                 mp = trusted_hit_to_material_price(

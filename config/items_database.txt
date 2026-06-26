@@ -1,0 +1,834 @@
+# BOHPTS market item names — one per line.
+# Cleaned from bulk OCR: grades, enchants, SA suffixes removed.
+# Lines starting with # are ignored.
+Adamantine
+Adamantite Earring
+Adamantite Necklace
+Adamantite Nugget
+Adamantite Ring
+Adamantite Ring Wire
+Amulet: Chant of Gate
+Amulet: Chant of Magnus
+Amulet: Pa'agrio's Emblem
+Amulet: Pa'agrio's Fist
+Amulet: Victories of Pa'agrio
+Ancient Adena
+Ancient Book: Divine Inspiration (Manuscript)
+Ancient Book: Divine Inspiration (Modern Language Version)
+Ancient Book: Divine Inspiration (Original Language Version)
+Ancient Book: Divine Inspiration (Original Version)
+Ancient Lesser Giant Book
+Ancient Spellbook: Anti-Summoning Field
+Ancient Spellbook: Cyclone
+Ancient Spellbook: Day of Doom
+Ancient Spellbook: Flames of Invincibility
+Ancient Spellbook: Gehenna
+Ancient Spellbook: Mass Recharge
+Ancient Spellbook: Miracle
+Ancient Spellbook: Purification Field
+Ancient Spellbook: Raging Waves
+Ancient Spellbook: Volcano
+Ancient Tactical Manual
+Ancient Tome of the Demon
+Angel Slayer
+Angel Slayer Blade
+Angelic Essence (A-grade)
+Animal Bone
+Animal Skin
+Arcana Mace Head
+Arcsmith's Anvil
+Armor Coupon (A-grade)
+Armor Coupon (B-grade)
+Armor Coupon (C-grade)
+Armor Coupon (D-grade)
+Armor Coupon (S-grade)
+Armor of Nightmare
+Arthro Nail
+Artisan's Frame
+Asofe
+Avadon Boots Heavy Armor
+Avadon Boots Robe
+Avadon Breastplate
+Avadon Gloves Robe
+Avadon Leather Armor
+Avadon Robe
+Avadon Shield
+Baby Cougar Chime
+BabyKookaburra Ocarina
+Bamboo Hat
+Barakiel's Axe
+Barakiel's Axe Piece
+Basalt Battlehammer
+Basalt Battlehammer Head
+Behemoth's Tuning Fork
+Behemoth's Tuning Fork Piece
+Bellion Cestus
+Bellion Cestus Edge
+Black Ore Earring
+Black Ore Necklace
+Black Ore Necklace Beads
+Black Ore Ring
+Blacksmith's Frame
+Blade of the Wizard's Tear
+Blessed Scroll of Escape
+Blessed Scroll of Resurrection
+Blessed Scroll: Enchant Armor (A-grade)
+Blessed Scroll: Enchant Armor (B-grade)
+Blessed Scroll: Enchant Armor (C-grade)
+Blessed Scroll: Enchant Armor (D-grade)
+Blessed Scroll: Enchant Armor (S-grade)
+Blessed Scroll: Enchant Weapon (A-grade)
+Blessed Scroll: Enchant Weapon (B-grade)
+Blessed Scroll: Enchant Weapon (C-grade)
+Blessed Scroll: Enchant Weapon (D-grade)
+Blessed Scroll: Enchant Weapon (S-grade)
+Blessed Spiritshot (A-grade)
+Blessed Spiritshot (B-grade)
+Blessed Spiritshot (C-grade)
+Blessed Spiritshot (D-grade)
+Blessed Spiritshot (S-grade)
+Blood Root
+Blood Tornado
+Bloody Orchid
+Bloody Orchid Head
+Blue Seal Stone
+Blue Soul Crystal - Stage 1
+Blue Soul Crystal - Stage 10
+Blue Soul Crystal - Stage 11
+Blue Soul Crystal - Stage 12
+Blue Soul Crystal - Stage 13
+Blue Soul Crystal - Stage 14
+Blue Soul Crystal - Stage 15
+Blue Soul Crystal - Stage 2
+Blue Soul Crystal - Stage 3
+Blue Soul Crystal - Stage 4
+Blue Soul Crystal - Stage 5
+Blue Soul Crystal - Stage 6
+Blue Soul Crystal - Stage 7
+Blue Soul Crystal - Stage 8
+Blue Soul Crystal - Stage 9
+Blue Wolf Boots
+Blue Wolf Breastplate
+Blue Wolf Breastplate Part
+Blue Wolf Gaiter Material
+Blue Wolf Gaiters
+Blue Wolf Gloves
+Blue Wolf Helmet
+Blue Wolf Helmet Design
+Blue Wolf Leather Armor
+Blue Wolf Stocking Pattern
+Blue Wolf Stockings
+Blue Wolf Tunic
+Boots of Nightmare Heavy Armor
+Bow of Peril
+Braided Hemp
+Branch of the Mother Tree
+Cabrio's Hand
+Cabrio's Hand Head
+Carnage Bow
+Carnage Bow Shaft
+Charcoal
+Coal
+Coarse Bone Powder
+Coin of Luck
+Cokes
+Compound Braid
+Compound Helmet
+Contained Life Force
+Cord Sheep Bait 66 Ivl
+CP Potion
+Crafted Leather
+Craftsman Mold
+Crimson Boots
+CRP Scroll 500
+Crystal (A-grade)
+Crystal (B-grade)
+Crystal (C-grade)
+Crystal (D-grade)
+Crystal (S-grade)
+Daimon Crystal
+Daimon Crystal Fragment
+Damascus Sword
+Damascus Sword Blade
+Damascus*Damascus
+Damascus*Damascus - Thunder
+Darion's Badge
+Dark Crystal Boots
+Dark Crystal Gloves
+Dark Crystal Helmet
+Dark Crystal Robe
+Dark Legion's Edge
+Dark Legion's Edge Blade
+Dark Screamer
+Dark Shard
+Dark Stone
+Dasparion's Staff
+Deadman's Glory Stone
+Deinonychus Mesozoic Stone
+Demon Splinter
+Demon Splinter Blade
+Demon's Blood
+Demon's Dagger
+Destroyer Hammer
+Destroyer Hammer Piece
+Destruction Tombstone
+Dim Life Force
+Dimensional Diamond
+Dimensional Fragment
+Divine Gloves
+Doom Crusher
+Doom Crusher Head
+Doom Helmet
+Doom Helmet Pattern
+Doom Plate Armor Temper Pattern
+Doom Shield
+Draconic Bow
+Draconic Bow Shaft
+Draconic Leather Armor
+Draconic Leather Helmet
+Dragon Bugle of Wind
+Dragon Grinder
+Dragon Grinder Edge
+Dragon Heart
+Dragon Hunter Axe
+Dragon Hunter Axe Blade
+Dragon Slayer
+Dragon Slayer Edge
+Durable Metal Plate
+Dwarven Hammer
+Dye of CON <Con+1 Dex-1>
+Dye of CON <Con+1 Dex-2>
+Dye of CON <Con+1 Dex-3>
+Dye of CON <Con+1 Str-1>
+Dye of CON <Con+1 Str-2>
+Dye of CON <Con+1 Str-3>
+Dye of DEX <Dex+1 Con-1>
+Dye of DEX <Dex+1 Con-2>
+Dye of DEX <Dex+1 Con-3>
+Dye of DEX <Dex+1 Str-1>
+Dye of DEX <Dex+1 Str-2>
+Dye of DEX <Dex+1 Str-3>
+Dye of INT <Int+1 Men-1>
+Dye of INT <Int+1 Men-2>
+Dye of INT <Int+1 Men-3>
+Dye of INT <Int+1 Wit-1>
+Dye of INT <Int+1 Wit-2>
+Dye of INT <Int+1 Wit-3>
+Dye of MEN <Men+1 Int-1>
+Dye of MEN <Men+1 Int-2>
+Dye of MEN <Men+1 Int-3>
+Dye of MEN <Men+1 Wit-1>
+Dye of MEN <Men+1 Wit-2>
+Dye of MEN <Men+1 Wit-3>
+Dye of STR <Str+1 Con-1>
+Dye of STR <Str+1 Con-2>
+Dye of STR <Str+1 Con-3>
+Dye of STR <Str+1 Dex-1>
+Dye of STR <Str+1 Dex-2>
+Dye of STR <Str+1 Dex-3>
+Dye of WIT <Wit+1 Int-1>
+Dye of WIT <Wit+1 Int-2>
+Dye of WIT <Wit+1 Int-3>
+Dye of WIT <Wit+1 Men-1>
+Dye of WIT <Wit+1 Men-2>
+Dye of WIT <Wit+1 Men-3>
+Earring of Orfen
+Earth Egg
+Earth Egg (A-grade)
+Earth Egg (B-grade)
+Earth Egg (C-grade)
+Earth Egg (D-grade)
+Earth Egg (S-grade)
+Earth Stone
+Elemental Sword
+Elixir of CP (A-grade)
+Elixir of CP (B-grade)
+Elixir of CP (C-grade)
+Elixir of CP (D-grade)
+Elixir of CP (S-grade)
+Elixir of Life (A-grade)
+Elixir of Life (B-grade)
+Elixir of Life (C-grade)
+Elixir of Life (D-grade)
+Elixir of Life (S-grade)
+Elixir of Mind (A-grade)
+Elixir of Mind (B-grade)
+Elixir of Mind (C-grade)
+Elixir of Mind (D-grade)
+Elixir of Mind (S-grade)
+Elysian
+Elysian Head
+Eminence Bow
+Enria
+Entrance Pass to the Sepulcher
+Evil Spirit Head
+Fabric
+Fire Stone
+Fish Clarity Scroll
+Fish Empower Scroll
+Fish Might Scroll
+Fish Oil
+Fish Stew - Mastery
+Fish Stew - Victory
+Fish Stew - Water
+Fish Stew - Wind
+Fish Stew CON + MEN
+Fish Stew Guild Commend
+Fish Stew INT
+Fish Stew STR
+Fishing Shot (A-grade)
+Fishing Shot (B-grade)
+Fishing Shot (C-grade)
+Fishing Shot (D-grade)
+Fishing Shot (S-grade)
+Fisted Blade
+Flaming Dragon Skull Piece
+Forgotten Blade
+Forgotten Blade Edge
+Foundation Black Ore Earring
+Freya's Bloody Rune Box
+Full Plate Armor
+Full Plate Boots
+Full Plate Gauntlets
+Full Plate Helmet
+Full Plate Shield
+Gauntlets of Nightmare
+Gemstone (A-grade)
+Gemstone (B-grade)
+Gemstone (C-grade)
+Gemstone (D-grade)
+Gemstone (S-grade)
+Gemstone A
+Gemstone S
+Giant's Codex
+Giant's Codex - Discipline
+Giant's Codex - Mastery
+Gold Afro
+Great Axe
+Great Black Wolf Necklace
+Great Sword
+Great Wolf Bronze Armor
+Greater CP Potion
+Greater Dye of CON <Con+1 Dex-1>
+Greater Dye of CON <Con+1 Dex-2>
+Greater Dye of CON <Con+1 Str-1>
+Greater Dye of CON <Con+1 Str-2>
+Greater Dye of CON <Con+2 Dex-2>
+Greater Dye of CON <Con+2 Dex-3>
+Greater Dye of CON <Con+2 Str-2>
+Greater Dye of CON <Con+2 Str-3>
+Greater Dye of CON <Con+3 Dex-3>
+Greater Dye of CON <Con+3 Dex-4>
+Greater Dye of CON <Con+3 Str-3>
+Greater Dye of CON <Con+3 Str-4>
+Greater Dye of CON <Con+4 Dex-4>
+Greater Dye of CON <Con+4 Str-4>
+Greater Dye of DEX <Dex+1 Con-1>
+Greater Dye of DEX <Dex+1 Con-2>
+Greater Dye of DEX <Dex+1 Str-1>
+Greater Dye of DEX <Dex+1 Str-2>
+Greater Dye of DEX <Dex+2 Con-2>
+Greater Dye of DEX <Dex+2 Con-3>
+Greater Dye of DEX <Dex+2 Str-2>
+Greater Dye of DEX <Dex+2 Str-3>
+Greater Dye of DEX <Dex+3 Con-3>
+Greater Dye of DEX <Dex+3 Con-4>
+Greater Dye of DEX <Dex+3 Str-3>
+Greater Dye of DEX <Dex+3 Str-4>
+Greater Dye of DEX <Dex+4 Con-4>
+Greater Dye of DEX <Dex+4 Str-4>
+Greater Dye of INT <Int+1 Men-1>
+Greater Dye of INT <Int+1 Men-2>
+Greater Dye of INT <Int+1 Wit-1>
+Greater Dye of INT <Int+1 Wit-2>
+Greater Dye of INT <Int+2 Men-2>
+Greater Dye of INT <Int+2 Men-3>
+Greater Dye of INT <Int+2 Wit-2>
+Greater Dye of INT <Int+2 Wit-3>
+Greater Dye of INT <Int+3 Men-3>
+Greater Dye of INT <Int+3 Men-4>
+Greater Dye of INT <Int+3 Wit-3>
+Greater Dye of INT <Int+3 Wit-4>
+Greater Dye of INT <Int+4 Men-4>
+Greater Dye of INT <Int+4 Wit-4>
+Greater Dye of MEN <Men+1 Int-1>
+Greater Dye of MEN <Men+1 Int-2>
+Greater Dye of MEN <Men+1 Wit-1>
+Greater Dye of MEN <Men+1 Wit-2>
+Greater Dye of MEN <Men+2 Int-2>
+Greater Dye of MEN <Men+2 Int-3>
+Greater Dye of MEN <Men+2 Wit-2>
+Greater Dye of MEN <Men+2 Wit-3>
+Greater Dye of MEN <Men+3 Int-3>
+Greater Dye of MEN <Men+3 Int-4>
+Greater Dye of MEN <Men+3 Wit-3>
+Greater Dye of MEN <Men+3 Wit-4>
+Greater Dye of MEN <Men+4 Int-4>
+Greater Dye of MEN <Men+4 Wit-4>
+Greater Dye of STR <Str+1 Con-1>
+Greater Dye of STR <Str+1 Con-2>
+Greater Dye of STR <Str+1 Dex-1>
+Greater Dye of STR <Str+1 Dex-2>
+Greater Dye of STR <Str+2 Con-2>
+Greater Dye of STR <Str+2 Con-3>
+Greater Dye of STR <Str+2 Dex-2>
+Greater Dye of STR <Str+2 Dex-3>
+Greater Dye of STR <Str+3 Con-3>
+Greater Dye of STR <Str+3 Con-4>
+Greater Dye of STR <Str+3 Dex-3>
+Greater Dye of STR <Str+3 Dex-4>
+Greater Dye of STR <Str+4 Con-4>
+Greater Dye of STR <Str+4 Dex-4>
+Greater Dye of WIT <Wit+1 Int-1>
+Greater Dye of WIT <Wit+1 Int-2>
+Greater Dye of WIT <Wit+1 Men-1>
+Greater Dye of WIT <Wit+1 Men-2>
+Greater Dye of WIT <Wit+2 Int-2>
+Greater Dye of WIT <Wit+2 Int-3>
+Greater Dye of WIT <Wit+2 Men-2>
+Greater Dye of WIT <Wit+2 Men-3>
+Greater Dye of WIT <Wit+3 Int-3>
+Greater Dye of WIT <Wit+3 Int-4>
+Greater Dye of WIT <Wit+3 Men-3>
+Greater Dye of WIT <Wit+3 Men-4>
+Greater Dye of WIT <Wit+4 Int-4>
+Greater Dye of WIT <Wit+4 Men-4>
+Greater Fish Oil
+Greater Magic Haste Potion
+Greater STR Dye <Str+1 Con-1>
+Green Seal Stone
+Green Soul Crystal - Stage 1
+Green Soul Crystal - Stage 10
+Green Soul Crystal - Stage 11
+Green Soul Crystal - Stage 12
+Green Soul Crystal - Stage 13
+Green Soul Crystal - Stage 14
+Green Soul Crystal - Stage 15
+Green Soul Crystal - Stage 2
+Green Soul Crystal - Stage 3
+Green Soul Crystal - Stage 4
+Green Soul Crystal - Stage 5
+Green Soul Crystal - Stage 6
+Green Soul Crystal - Stage 7
+Green Soul Crystal - Stage 8
+Green Soul Crystal - Stage 9
+Halberd - Lightning
+Halberd Edge
+Healing Potion
+Heaven's Divider
+Heaven's Divider Edge
+Hellfire Oil
+High-grade Life Stone
+High-grade Magic Ornament
+High-grade Suede
+Holy Crystal
+Holy Stone
+Homunkulus' Sword
+Hoplon
+Horn of Glory
+Horn of Glory Fragment
+Imperial Crusader Boots
+Imperial Crusader Breastplate
+Imperial Crusader Gaiters
+Imperial Crusader Gauntlets
+Imperial Crusader Helmet
+Imperial Crusader Shield
+Imperial Staff
+Imperial Staff - Destruction
+Imperial Staff Head
+Improved Buffalo Panpipe
+Improved Cougar Chime
+Improved Kookaburra Ocarina
+Improved Top-Grade Life Stone
+Infernium Ore
+Inferno Staff
+Iron Belt
+Iron Ore
+Jewelry Coupon (A-grade)
+Jewelry Coupon (B-grade)
+Jewelry Coupon (C-grade)
+Jewelry Coupon (D-grade)
+Jewelry Coupon (S-grade)
+Karmian Boots
+Keshanberk
+Keshanberk*Damascus
+Keshanberk*Damascus - Destruction
+Knuckle Duster
+Lance
+Lance Blade
+Large White Fat Fish
+Large White Nimble Fish
+Large Yellow Ugly Fish
+Lava Stone
+Leather
+Leather Armor of Doom
+Leather Armor of Nightmare
+Leonard
+Life Force
+Low-grade Magic Ornament
+Lucky Enchant Stone: Armor (A-grade)
+Lucky Enchant Stone: Armor (B-grade)
+Lucky Enchant Stone: Armor (C-grade)
+Lucky Enchant Stone: Armor (D-grade)
+Lucky Enchant Stone: Armor (S-grade)
+Lucky Enchant Stone: Weapon (A-grade)
+Lucky Enchant Stone: Weapon (B-grade)
+Lucky Enchant Stone: Weapon (C-grade)
+Lucky Enchant Stone: Weapon (D-grade)
+Lucky Enchant Stone: Weapon (S-grade)
+Lunargent
+Maestro Anvil Lock
+Maestro Holder
+Maestro Mold
+Majestic Boots Heavy Armor
+Majestic Circlet
+Majestic Circlet Heavy Armor
+Majestic Earring
+Majestic Gauntlets Heavy Armor
+Majestic Gauntlets Robe
+Majestic Leather Armor
+Majestic Necklace
+Majestic Plate Armor
+Majestic Ring
+Majestic Robe
+Major Arcana Boots
+Major Arcana Circlet
+Major Arcana Gloves
+Major Arcana Robe
+Major Healing Potion
+Mammon's Varnish Enhancer
+Mark of Betrayal
+Mem Coin
+Memento Mori (A-grade)
+Memento Mori (B-grade)
+Memento Mori (C-grade)
+Memento Mori (D-grade)
+Memento Mori (S-grade)
+Metal Hardener
+Metallic Fiber
+Metallic Thread
+Meteor Shower
+Meteor Shower Head
+Mid-grade Life Stone
+Mid-grade Magic Ornament
+Mithril Alloy
+Mithril Arrow
+Mithril Belt
+Mithril Ore
+Mold Glue
+Mold Hardener
+Mold Lubricant
+Mold Moonstone Shard
+Naga Storm
+Naga Storm Piece
+Nassen's Earring
+Necklace of Seal
+Neolithic Crystal (A-grade)
+Neolithic Crystal (B-grade)
+Neolithic Crystal (C-grade)
+Neolithic Crystal (D-grade)
+Neolithic Crystal (S-grade)
+Nirvana Axe
+Nonliving Nucleus
+Nonliving Nucleus (A-grade)
+Nonliving Nucleus (B-grade)
+Nonliving Nucleus (C-grade)
+Nonliving Nucleus (D-grade)
+Nonliving Nucleus (S-grade)
+Olympiad Treasure Chest
+Onyx Beast's Eye Earring
+Orange Nimble Fish
+Orange Ugly Fish
+Orcish Poleaxe
+Orichalcum Fang
+Orichalcum Memento Mori
+Oriharukon Ore
+Passive Book: Combat Aura
+Passive Book: Sigil Mastery
+Phoenix Necklace
+Poleaxe
+Premium Fish Oil
+Quicksilver
+Raccoon Ears
+Recipe: Angel Slayer (60%)
+Recipe: Arcana Mace (60%)
+Recipe: Art of Battle Axe
+Recipe: Artisan's Frame (60%)
+Recipe: Avadon Robe
+Recipe: Basalt Battlehammer (60%)
+Recipe: Behemoth's Tuning Fork (60%)
+Recipe: Bellion Cestus
+Recipe: Black Ore Earring (60%)
+Recipe: Black Ore Necklace (60%)
+Recipe: Black Ore Ring
+Recipe: Blue Wolf Breastplate (60%)
+Recipe: Blue Wolf Gaiters (60%)
+Recipe: Blue Wolf Helmet (60%)
+Recipe: Blue Wolf Leather Armor (60%)
+Recipe: Blue Wolf Stockings (60%)
+Recipe: Blue Wolf Tunic
+Recipe: Branch of the Mother Tree
+Recipe: Carnage Bow (60%)
+Recipe: Daimon Crystal
+Recipe: Damascus Sword
+Recipe: Dark Legion's Edge (60%)
+Recipe: Deadman's Glory
+Recipe: Demon Splinter
+Recipe: Destroyer Hammer (60%)
+Recipe: Doom Crusher (60%)
+Recipe: Doom Helmet
+Recipe: Doom Plate Armor (60%)
+Recipe: Draconic Bow (60%)
+Recipe: Dragon Hunter Axe (60%)
+Recipe: Durable Metal Plate (60%)
+Recipe: Elemental Sword
+Recipe: Elysian (60%)
+Recipe: Flaming Dragon Skull (60%)
+Recipe: Forgotten Blade (60%)
+Recipe: Great Sword (60%)
+Recipe: Greater Blessed Spiritshot (60%)
+Recipe: Greater Fish Oil (60%)
+Recipe: Heaven's Divider (60%)
+Recipe: Imperial Staff
+Recipe: Kaim Vanul's Bones (60%)
+Recipe: Kris (60%)
+Recipe: Lance
+Recipe: Lance (60%)
+Recipe: Leather Armor of Doom (60%)
+Recipe: Maestro Holder
+Recipe: Mithril Arrow
+Recipe: Naga Storm (60%)
+Recipe: Oriharukon
+Recipe: Premium Fish Oil (60%)
+Recipe: Saint Spear (60%)
+Recipe: Shyeed's Bow (60%)
+Recipe: Soul Bow (60%)
+Recipe: Soul Separator (60%)
+Recipe: Spiritual Eye (60%)
+Recipe: Staff of Evil Spirits (60%)
+Recipe: Stockings of Doom (60%)
+Recipe: Sword of Miracles (60%)
+Recipe: Synthetic Cokes
+Recipe: Tallum Blade (60%)
+Recipe: Tallum Glaive (60%)
+Recipe: Themis' Tongue
+Recipe: Tunic of Doom
+Recipe: Tunic of Doom (60%)
+Recipe: Tunic of Zubei
+Red Gem
+Red Seal Stone
+Red Soul Crystal - Stage 1
+Red Soul Crystal - Stage 10
+Red Soul Crystal - Stage 11
+Red Soul Crystal - Stage 12
+Red Soul Crystal - Stage 13
+Red Soul Crystal - Stage 14
+Red Soul Crystal - Stage 15
+Red Soul Crystal - Stage 2
+Red Soul Crystal - Stage 3
+Red Soul Crystal - Stage 4
+Red Soul Crystal - Stage 5
+Red Soul Crystal - Stage 6
+Red Soul Crystal - Stage 7
+Red Soul Crystal - Stage 8
+Red Soul Crystal - Stage 9
+Reinforced Wolf Fang
+Reorin's Mold
+Ring of Queen Ant
+Ring of Seal
+Ring of Seal Gemstone
+Saint Spear
+Saint Spear Blade
+Samurai Longsword*Samurai Longsword
+Scorpion Poison Stinger
+Scroll: Enchant Armor (A-grade)
+Scroll: Enchant Armor (B-grade)
+Scroll: Enchant Armor (C-grade)
+Scroll: Enchant Armor (D-grade)
+Scroll: Enchant Armor (S-grade)
+Scroll: Enchant Weapon (A-grade)
+Scroll: Enchant Weapon (B-grade)
+Scroll: Enchant Weapon (C-grade)
+Scroll: Enchant Weapon (D-grade)
+Scroll: Enchant Weapon (S-grade)
+Sealed Arcana Sigil
+Sealed Arcana Sigil Piece
+Sealed Armor of Nightmare
+Sealed Avadon Boots
+Sealed Avadon Gloves
+Sealed Blue Wolf Boot Design
+Sealed Blue Wolf Boots
+Sealed Blue Wolf Gloves
+Sealed Boots of Nightmare
+Sealed Dark Crystal Boots
+Sealed Dark Crystal Breastplate
+Sealed Dark Crystal Gaiters
+Sealed Dark Crystal Gloves
+Sealed Dark Crystal Helmet
+Sealed Dark Crystal Leather Armor
+Sealed Dark Crystal Leggings
+Sealed Dark Crystal Robe
+Sealed Dark Crystal Shield
+Sealed Doom Boot Fragment
+Sealed Doom Boots
+Sealed Doom Gloves
+Sealed Doom Gloves Fragment
+Sealed Draconic Leather Armor
+Sealed Draconic Leather Boots
+Sealed Draconic Leather Gloves
+Sealed Draconic Leather Helmet
+Sealed Gauntlets of Nightmare
+Sealed Helm of Nightmare
+Sealed Imperial Crusader Boots
+Sealed Imperial Crusader Breastplate
+Sealed Imperial Crusader Gaiters
+Sealed Imperial Crusader Gauntlets
+Sealed Imperial Crusader Helmet
+Sealed Imperial Crusader Shield
+Sealed Leather Armor of Nightmare
+Sealed Magic Ornament (60%)
+Sealed Majestic Boot Lining
+Sealed Majestic Boots
+Sealed Majestic Circlet
+Sealed Majestic Earring
+Sealed Majestic Gauntlets
+Sealed Majestic Leather Armor
+Sealed Majestic Necklace
+Sealed Majestic Plate Armor
+Sealed Majestic Ring
+Sealed Majestic Ring Gemstone
+Sealed Majestic Robe
+Sealed Majestic Robe Fabric
+Sealed Major Arcana Boots
+Sealed Major Arcana Circlet
+Sealed Major Arcana Gloves
+Sealed Major Arcana Robe
+Sealed Phoenix Boots
+Sealed Phoenix Earring
+Sealed Phoenix Gloves
+Sealed Phoenix Necklace
+Sealed Phoenix Ring
+Sealed Phoenix Ring Gemstone
+Sealed Robe of Nightmare
+Sealed Shield of Nightmare
+Sealed Tallum Boot Lining
+Sealed Tallum Boots
+Sealed Tallum Glove Design
+Sealed Tallum Gloves
+Sealed Tallum Helmet
+Sealed Tallum Helmet Design
+Sealed Tallum Leather Armor
+Sealed Tallum Plate Armor
+Sealed Tallum Stockings
+Sealed Tallum Tunic
+Sealed Tallum Tunic Textile
+Sealed Tateossian Earring
+Sealed Tateossian Necklace
+Sealed Tateossian Ring
+Sheep Bait
+Shield of Nightmare
+Shyeed's Bow
+Shyeed's Bow Shaft
+Silver Arrow
+Silver Mold
+Silver Nugget
+Sirra's Blade
+Sirra's Blade Edge
+Small Orange Fat Fish
+Small Orange Nimble Fish
+Small Orange Ugly Fish
+Sobekk's Hurricane
+Soul Bow
+Soul Separator
+Soul Separator Head
+Soulshot (A-grade)
+Soulshot (B-grade)
+Soulshot (C-grade)
+Soulshot (D-grade)
+Soulshot (S-grade)
+Soulshot Comprehension
+Spellbook: Balance Life
+Spellbook: Dark Vortex
+Spellbook: Elemental Assault
+Spellbook: Fire Vortex
+Spellbook: Ice Vortex
+Spellbook: Light Vortex
+Spellbook: Mage Bane
+Spellbook: Mystic Immunity
+Spellbook: Salvation
+Spellbook: Soul of the Phoenix
+Spellbook: Summon Feline King
+Spellbook: Summon Feline Queen
+Spellbook: Summon Magnus the Unicorn
+Spellbook: Summon Mirage the Unicorn
+Spellbook: Summon Spectral Knight
+Spellbook: Wind Vortex
+Spirit Bead
+Spirit Sword*Spirit Sword
+Spiritshot (A-grade)
+Spiritshot (B-grade)
+Spiritshot (C-grade)
+Spiritshot (D-grade)
+Spiritshot (S-grade)
+Sprigant's Fruit
+Square Shield
+Staff of Evil Spirits
+Steel
+Stem
+Stockings of Doom Pattern
+Stockings of Zubei
+Stone of Purity
+StormBringer*StormBringer
+Striped Linen Shirt
+Suede
+Sulfur
+Sword of Ipos
+Sword of Miracles
+Sword of Miracles Edge
+Sword of Valhalla
+Synthetic Cokes
+Tallum Blade
+Tallum Blade Edge
+Tallum Blade*Dark Legion's Edge
+Tallum Boots Heavy Armor
+Tallum Glaive
+Tallum Glaive Edge
+Tallum Gloves
+Tallum Helmet
+Tallum Leather Armor
+Tallum Plate Armor
+Tallum Stockings
+Tallum Tunic
+Tateossian Earring
+Tateossian Ring
+Theca Leather Boots
+Themis' Tongue
+Themis' Tongue Piece
+Thons
+Thread
+Tiphon's Spear
+Top-Grade Life Stone
+Tsurugi*Tsurugi
+Tunic of Doom
+Tunic of Doom Pattern
+Tunic of Zubei
+Varnish
+Varnish of Purity
+Volcanic Ash
+Warsmith's Holder
+Warsmith's Mold
+Water Stone
+Weapon Coupon (A-grade)
+Weapon Coupon (B-grade)
+Weapon Coupon (Best A-grade)
+Weapon Coupon (C-grade)
+Weapon Coupon (D-grade)
+Weapon Coupon (S-grade)
+Wind Stone
+Wizard's Tear
+Wolf Collar
+Yellow Fat Fish
+Yellow Nimble Fish
+Zubei's Breastplate
+Zubei's Gaiters
+Zubei's Helmet

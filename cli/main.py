@@ -23,8 +23,16 @@ from market.services.bulk_scanner import BulkScanner
 from market.services.craft_scanner import CraftPriceScanner, DEFAULT_CRAFT_PRICES_DIR, DEFAULT_RECIPES_DIR
 from market.services.search_scanner import SearchScanner, PROGRESS_NAME
 from market.build_truncated_list import build_truncated_list_from_pages
+from market.build_items_database import (
+    build_items_database_from_bulk,
+    print_build_summary,
+    write_items_database,
+)
+from market.repair_items_database import repair_items_database_file
 from market.truncated_storage import DEFAULT_TRUNCATED_ITEMS_PATH, DEFAULT_TRUNCATED_LISTINGS_PATH
 from market.catalog_dedupe import dedupe_catalog, print_dedupe_summary
+from market.canonical_names import CanonicalNameIndex, format_resolution_report
+from market.name_aliases import DEFAULT_ALIASES_PATH
 from market.resolve_bulk import (
     load_bulk_jsonl,
     print_resolve_summary,
@@ -43,6 +51,7 @@ from market.trusted_prices import (
     write_trusted_jsonl,
 )
 from market.search_progress import M2_MODE_VERSION, SearchProgressStore, target_config_hash
+from market.items_db import DEFAULT_ITEMS_DB
 from market.variant_catalog import VariantCatalog
 
 _LOGS = ROOT / "logs"
@@ -66,6 +75,10 @@ def build_parser() -> argparse.ArgumentParser:
     _add_build_truncated_list_command(sub)
     _add_catalog_command(sub)
     _add_resolve_command(sub)
+    _add_resolve_name_command(sub)
+    _add_build_items_db_command(sub)
+    _add_clean_items_db_command(sub)
+    _add_repair_items_db_command(sub)
     _add_trusted_prices_command(sub)
     return parser
 
@@ -351,6 +364,86 @@ def _add_resolve_command(sub: argparse._SubParsersAction) -> None:
     p.set_defaults(func=cmd_resolve_bulk)
 
 
+def _add_resolve_name_command(sub: argparse._SubParsersAction) -> None:
+    p = sub.add_parser(
+        "resolve-name",
+        help="Test canonical name resolution (alias / prefix / ambiguous)",
+    )
+    p.add_argument("name", type=str, help="Visible or truncated market item name")
+    p.add_argument(
+        "--aliases",
+        type=Path,
+        default=DEFAULT_ALIASES_PATH,
+        help="Alias file (default: config/aliases.yaml)",
+    )
+    p.add_argument(
+        "--items-db",
+        type=Path,
+        default=DEFAULT_ITEMS_DB,
+        help="Items database (default: config/items_database.txt)",
+    )
+    p.set_defaults(func=cmd_resolve_name)
+
+
+def _add_build_items_db_command(sub: argparse._SubParsersAction) -> None:
+    p = sub.add_parser(
+        "build-items-db",
+        help="Build config/items_database.txt from bulk crawl item names",
+    )
+    p.add_argument(
+        "--bulk",
+        type=Path,
+        default=_LOGS / "market_all_items.jsonl",
+        help="Bulk crawl JSONL (default: logs/market_all_items.jsonl)",
+    )
+    p.add_argument(
+        "--out",
+        type=Path,
+        default=DEFAULT_ITEMS_DB,
+        help="Output text file (default: config/items_database.txt)",
+    )
+    p.add_argument(
+        "--include-resolved",
+        action="store_true",
+        help="Also add identity names from resolved bulk rows in the same file",
+    )
+    p.add_argument(
+        "--merge",
+        action="store_true",
+        help="Keep existing names from --out and add any new bulk names",
+    )
+    p.set_defaults(func=cmd_build_items_db)
+
+
+def _add_clean_items_db_command(sub: argparse._SubParsersAction) -> None:
+    p = sub.add_parser(
+        "clean-items-db",
+        help="Fix grades, enchants, SA suffixes; add dyes and soul crystal stages",
+    )
+    p.add_argument(
+        "--file",
+        type=Path,
+        default=DEFAULT_ITEMS_DB,
+        help="Items database to clean (default: config/items_database.txt)",
+    )
+    p.add_argument("--dry-run", action="store_true", help="Report counts only")
+    p.set_defaults(func=cmd_clean_items_db)
+
+
+def _add_repair_items_db_command(sub: argparse._SubParsersAction) -> None:
+    p = sub.add_parser(
+        "repair-items-db",
+        help="Fix truncations, merged OCR lines, and bot priority gaps in items_database.txt",
+    )
+    p.add_argument(
+        "--file",
+        type=Path,
+        default=DEFAULT_ITEMS_DB,
+        help="Items database to repair (default: config/items_database.txt)",
+    )
+    p.set_defaults(func=cmd_repair_items_db)
+
+
 def _add_trusted_prices_command(sub: argparse._SubParsersAction) -> None:
     p = sub.add_parser(
         "trusted-prices",
@@ -470,6 +563,54 @@ def cmd_resolve_bulk(ns: argparse.Namespace) -> None:
     if ns.save_catalog or (ns.record_aliases and stats.aliases_added):
         catalog.save()
         print(f"[resolve] catalog saved: {catalog_path}", flush=True)
+
+
+def cmd_resolve_name(ns: argparse.Namespace) -> None:
+    index = CanonicalNameIndex.load(
+        aliases_path=ns.aliases.resolve(),
+        items_database=ns.items_db.resolve(),
+    )
+    result = index.resolve_name(ns.name)
+    print(format_resolution_report(result), flush=True)
+
+
+def cmd_build_items_db(ns: argparse.Namespace) -> None:
+    bulk_path = ns.bulk.resolve()
+    out_path = ns.out.resolve()
+    if not bulk_path.is_file():
+        raise SystemExit(f"Bulk JSONL not found: {bulk_path}")
+
+    existing = out_path if ns.merge else None
+    observations = load_bulk_jsonl(bulk_path)
+    if not observations:
+        raise SystemExit(f"No bulk observations in {bulk_path}")
+
+    names = build_items_database_from_bulk(
+        bulk_path,
+        include_resolved_names=ns.include_resolved,
+        existing_path=existing,
+    )
+    write_items_database(out_path, names)
+    print_build_summary(
+        bulk_path=bulk_path,
+        out_path=out_path,
+        observation_count=len(observations),
+        name_count=len(names),
+    )
+
+
+def cmd_clean_items_db(ns: argparse.Namespace) -> None:
+    before, after = clean_items_database_file(ns.file.resolve(), dry_run=ns.dry_run)
+    action = "would write" if ns.dry_run else "wrote"
+    print(f"[items-db] {action} {after} name(s) (from {before} raw line(s))", flush=True)
+    if not ns.dry_run:
+        print(f"  output: {ns.file.resolve()}", flush=True)
+
+
+def cmd_repair_items_db(ns: argparse.Namespace) -> None:
+    count = repair_items_database_file(ns.file.resolve())
+    print(f"[items-db] repaired {count} unique name(s)", flush=True)
+    print(f"  output: {ns.file.resolve()}", flush=True)
 
 
 def cmd_trusted_prices(ns: argparse.Namespace) -> None:

@@ -170,7 +170,14 @@ class SearchResult:
             "item_uid": self.raw_row.get("item_uid") if self.raw_row else None,
             "item_icon_hash": self.raw_row.get("item_icon_hash") if self.raw_row else None,
             "identity_status": self.raw_row.get("identity_status") if self.raw_row else None,
-            "price_source": self.raw_row.get("price_source") if self.raw_row else None,
+            "price_source": (
+                self.raw_row.get("price_source") if self.raw_row else "m2_search"
+            ),
+            "availability": (
+                "available"
+                if self.found and self.price_adena is not None
+                else "not_found"
+            ),
         }
 
 

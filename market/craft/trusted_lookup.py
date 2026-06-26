@@ -12,10 +12,18 @@ from typing import Any
 from market.core.item_id import item_id_from_name
 from market.core.models import DEFAULT_VARIANT_CATALOG_PATH
 from market.craft.match import _MIN_ACCEPT_SCORE, _match_score
-from market.craft.models import AVAILABILITY_AVAILABLE, AVAILABILITY_INSUFFICIENT_QTY, MaterialPrice
+from market.craft.models import (
+    AVAILABILITY_AVAILABLE,
+    AVAILABILITY_INSUFFICIENT_QTY,
+    AVAILABILITY_NOT_ON_MARKET,
+    MaterialPrice,
+)
 from market.trusted_prices import (
+    AVAILABILITY_NOT_FOUND,
     DEFAULT_TRUSTED_GROUPED_CSV,
     GroupedTrustedPriceRow,
+    M2_FRESH_HOURS_FUNGIBLE,
+    M2_FRESH_HOURS_GEAR,
     aggregate_trusted_prices_grouped,
     collect_trusted_price_points,
 )
@@ -29,13 +37,16 @@ _FINISHED_EXCLUDE = frozenset(
 @dataclass(frozen=True)
 class TrustedPriceHit:
     group_key: str
-    min_price: int
+    min_price: int | None
     vendor: str | None
     units: int | None
     last_seen_at: str
     display_name: str | None
     identity_status: str
     match_method: str
+    availability: str = AVAILABILITY_AVAILABLE
+    selected_source: str = ""
+    warning: str = ""
     observation_count: int = 1
 
     @property
@@ -50,6 +61,10 @@ class TrustedPriceHit:
             return delta.total_seconds() / 3600.0
         except ValueError:
             return None
+
+    @property
+    def is_not_found(self) -> bool:
+        return self.availability == AVAILABILITY_NOT_FOUND
 
 
 def _recipe_lookup_keys(item_id: str, search_name: str) -> list[str]:
@@ -69,6 +84,32 @@ def _recipe_lookup_keys(item_id: str, search_name: str) -> list[str]:
     if item_id.startswith("recipe_"):
         add(re.sub(r"^recipe_", "", item_id))
     return keys
+
+
+def _parse_grouped_row(raw: dict[str, str]) -> GroupedTrustedPriceRow:
+    min_raw = raw.get("min_price")
+    min_price = int(min_raw) if min_raw not in (None, "") else 0
+    return GroupedTrustedPriceRow(
+        group_key=str(raw.get("group_key") or ""),
+        variant_group=raw.get("variant_group") or None,
+        display_name=raw.get("display_name") or None,
+        fungible=str(raw.get("fungible", "")).lower() in ("true", "1", "yes"),
+        min_price=min_price,
+        median_price=int(raw["median_price"]) if raw.get("median_price") else None,
+        vendor=raw.get("vendor") or None,
+        units=int(raw["units"]) if raw.get("units") not in (None, "") else None,
+        source=str(raw.get("source") or raw.get("selected_source") or ""),
+        identity_status=str(raw.get("identity_status") or ""),
+        last_seen_at=str(raw.get("last_seen_at") or ""),
+        confidence=str(raw.get("confidence") or "medium"),
+        observation_count=int(raw.get("observation_count") or 1),
+        item_uid_count=int(raw.get("item_uid_count") or 1),
+        availability=str(raw.get("availability") or AVAILABILITY_AVAILABLE),
+        selected_source=str(raw.get("selected_source") or raw.get("source") or ""),
+        suppressed_sources=str(raw.get("suppressed_sources") or ""),
+        is_stale=str(raw.get("is_stale", "")).lower() in ("true", "1", "yes"),
+        warning=str(raw.get("warning") or ""),
+    )
 
 
 def load_grouped_trusted_rows(
@@ -91,25 +132,10 @@ def load_grouped_trusted_rows(
     rows: list[GroupedTrustedPriceRow] = []
     with grouped_csv.open(encoding="utf-8", newline="") as fh:
         for raw in csv.DictReader(fh):
-            rows.append(
-                GroupedTrustedPriceRow(
-                    group_key=str(raw.get("group_key") or ""),
-                    variant_group=raw.get("variant_group") or None,
-                    display_name=raw.get("display_name") or None,
-                    fungible=str(raw.get("fungible", "")).lower() in ("true", "1", "yes"),
-                    min_price=int(raw.get("min_price") or 0),
-                    median_price=int(raw["median_price"]) if raw.get("median_price") else None,
-                    vendor=raw.get("vendor") or None,
-                    units=int(raw["units"]) if raw.get("units") not in (None, "") else None,
-                    source=str(raw.get("source") or ""),
-                    identity_status=str(raw.get("identity_status") or ""),
-                    last_seen_at=str(raw.get("last_seen_at") or ""),
-                    confidence=str(raw.get("confidence") or "medium"),
-                    observation_count=int(raw.get("observation_count") or 1),
-                    item_uid_count=int(raw.get("item_uid_count") or 1),
-                )
-            )
-    return [r for r in rows if r.min_price > 0]
+            row = _parse_grouped_row(raw)
+            if row.availability == AVAILABILITY_NOT_FOUND or row.min_price > 0:
+                rows.append(row)
+    return rows
 
 
 def _name_match_pool(rows: list[GroupedTrustedPriceRow], search_name: str) -> list[GroupedTrustedPriceRow]:
@@ -154,6 +180,8 @@ class TrustedPriceLookup:
         return len(self._rows)
 
     def is_stale(self, hit: TrustedPriceHit, *, max_age_hours: float) -> bool:
+        if hit.is_not_found:
+            return False
         age = hit.age_hours
         return age is None or age > max_age_hours
 
@@ -189,6 +217,8 @@ class TrustedPriceLookup:
     ) -> TrustedPriceHit | None:
         matches: list[GroupedTrustedPriceRow] = []
         for row in self._rows:
+            if row.availability == AVAILABILITY_NOT_FOUND:
+                continue
             vg = (row.variant_group or "").casefold()
             if vg and vg != recipe_id.casefold():
                 continue
@@ -200,7 +230,7 @@ class TrustedPriceLookup:
                 matches.append(row)
         if not matches:
             return None
-        row = min(matches, key=lambda r: r.min_price)
+        row = min(matches, key=lambda r: r.min_price if r.min_price > 0 else 10**18)
         return self._hit(row, "trusted_finished")
 
     def _hit(
@@ -212,13 +242,16 @@ class TrustedPriceLookup:
     ) -> TrustedPriceHit:
         return TrustedPriceHit(
             group_key=row.group_key,
-            min_price=row.min_price,
+            min_price=row.min_price if row.min_price > 0 else None,
             vendor=row.vendor,
             units=row.units,
             last_seen_at=row.last_seen_at,
             display_name=row.display_name,
             identity_status=row.identity_status,
             match_method=method,
+            availability=row.availability,
+            selected_source=row.selected_source or row.source,
+            warning=row.warning,
             observation_count=row.observation_count,
         )
 
@@ -230,12 +263,30 @@ def trusted_hit_to_material_price(
     search_name: str,
     qty_needed: int,
 ) -> MaterialPrice:
+    if hit.is_not_found:
+        return MaterialPrice(
+            item_id=item_id,
+            search_name=search_name,
+            unit_price_adena=None,
+            vendor=None,
+            units_available=None,
+            listing_count=0,
+            source="trusted_grouped",
+            scanned_at=hit.last_seen_at,
+            availability=AVAILABILITY_NOT_ON_MARKET,
+            availability_note="fresh M+2 check — not on market",
+            cached_unit_price_adena=None,
+        )
+
     units = hit.units
     availability = AVAILABILITY_AVAILABLE
     note = f"via trusted ({hit.match_method})"
+    if hit.warning:
+        note = f"{note}; {hit.warning}"
     if units is not None and qty_needed > 0 and units < qty_needed:
         availability = AVAILABILITY_INSUFFICIENT_QTY
         note = f"trusted listing {units} < need {qty_needed}"
+
     return MaterialPrice(
         item_id=item_id,
         search_name=search_name,
@@ -277,6 +328,18 @@ def seed_prices_from_trusted(
         if hit is None:
             need_live.append(mat.item_id)
             continue
+
+        if hit.is_not_found:
+            mp = trusted_hit_to_material_price(
+                hit,
+                item_id=mat.item_id,
+                search_name=mat.search_name,
+                qty_needed=qty,
+            )
+            prices[mat.item_id] = mp
+            hits += 1
+            continue
+
         if lookup.is_stale(hit, max_age_hours=max_age_hours):
             need_live.append(mat.item_id)
             continue
@@ -292,3 +355,10 @@ def seed_prices_from_trusted(
         if force_live_if_insufficient and mp.availability == AVAILABILITY_INSUFFICIENT_QTY:
             need_live.append(mat.item_id)
     return hits, need_live
+
+
+def trusted_max_age_for_material(search_name: str, default_hours: float) -> float:
+    sn = search_name.casefold()
+    if sn.startswith("recipe") or "shaft" in sn:
+        return min(default_hours, M2_FRESH_HOURS_GEAR)
+    return min(default_hours, M2_FRESH_HOURS_FUNGIBLE)
