@@ -18,14 +18,20 @@ from market.full_list_parser import (
     MarketRow,
     icon_hash_for_list_row,
     parse_page_rows,
+    rows_with_item_icons,
 )
 from market.input_ctl import smooth_move_to
 from market.ocr_engine import get_ocr_engine
-from market.page_fingerprint import PageFingerprint, fingerprint_page, page_unchanged
-from market.pagination import ListPageTracker, read_page_indicator_robust
+from market.page_fingerprint import (
+    PageFingerprint,
+    fingerprint_list_body,
+    list_icon_fingerprint_body,
+    page_unchanged,
+)
+from market.pagination import ListPageTracker, is_reliable_last_page, read_page_indicator_robust
 from market.pico_hid import PicoHidSerial
 from market.run_control import RunControl, StopRequested, check_stop, sleep_checked
-from market.search import park_cursor_on_back, press_back_button
+from market.search import park_cursor_for_ocr, park_cursor_on_back, press_back_button
 from market.ui_layout import search_results_row_click_xy
 
 LIST_ROW_SETTLE_S = 0.3
@@ -34,19 +40,18 @@ BACK_TO_LIST_SETTLE_S = 0.35
 EMPTY_PAGE_STOP = 2
 
 
+def _format_rows_label(rows: list[int]) -> str:
+    if not rows:
+        return "none"
+    return ",".join(str(r) for r in rows)
+
+
 def _should_stop_bulk_list(
     *,
-    loop_i: int,
-    prev_fp: PageFingerprint | None,
-    cur_fp: PageFingerprint,
     empty_pages: int,
     rows_this_page: int,
 ) -> tuple[bool, str | None]:
-    """Stop only on duplicate page or repeated empty pages — never on pagination OCR."""
-    if loop_i <= 1:
-        return False, None
-    if page_unchanged(prev_fp, cur_fp):
-        return True, "duplicate page fingerprint (Next did not advance)"
+    """Stop only on repeated empty pages — last page is detected after Next via fingerprint."""
     if rows_this_page > 0 and empty_pages >= EMPTY_PAGE_STOP:
         return True, f"{empty_pages} consecutive pages without prices"
     return False, None
@@ -67,6 +72,42 @@ def _click_list_row(
     sleep_checked(LIST_ROW_SETTLE_S, run_control=run_control)
 
 
+def _capture_list_fingerprint(*, market, back, next_btn) -> PageFingerprint:
+    """Park cursor on Next (below list) and hash only the list body above pagination."""
+    park_cursor_for_ocr(back=back, next_btn=next_btn, on_next=True, settle_s=0.08)
+    time.sleep(0.05)
+    frame = grab_screen_rect(market.left, market.top, market.width, market.height)
+    return fingerprint_list_body(frame.bgr)
+
+
+def _next_list_page(
+    *,
+    market,
+    back,
+    next_btn,
+    pico: PicoHidSerial,
+    before_fp: PageFingerprint,
+    page_delay_s: float,
+    run_control: RunControl | None = None,
+) -> tuple[bool, PageFingerprint | None]:
+    """
+    Click list Next and verify the page advanced.
+
+    Cursor stays on Next; fingerprints compare list body only (above pagination).
+    Returns ``(advanced, fingerprint_after_click)``.
+    """
+    _click_list_next_page(
+        next_btn=next_btn,
+        pico=pico,
+        page_delay_s=page_delay_s,
+        run_control=run_control,
+    )
+    after_fp = _capture_list_fingerprint(market=market, back=back, next_btn=next_btn)
+    if page_unchanged(before_fp, after_fp):
+        return False, after_fp
+    return True, after_fp
+
+
 def _click_list_next_page(
     *,
     next_btn,
@@ -74,8 +115,9 @@ def _click_list_next_page(
     page_delay_s: float,
     run_control: RunControl | None = None,
 ) -> None:
+    """Click Next — cursor should already be parked there from the pre-click fingerprint."""
     cx, cy = next_btn.center_screen()
-    smooth_move_to(cx, cy, duration_s=0.08, steps=4, sync=False)
+    smooth_move_to(cx, cy, duration_s=0.06, steps=3, sync=False)
     time.sleep(0.03)
     pico.click_left_prepare(hold_ms=100, ping=True)
     sleep_checked(page_delay_s, run_control=run_control)
@@ -177,7 +219,6 @@ def crawl_market_vendors(
     else:
         print(f"[bulk-crawl] dry-run — category={category!r}, no clicks", flush=True)
 
-    prev_fp: PageFingerprint | None = None
     empty_pages = 0
     total_vendor_listings = 0
     observations_written = 0
@@ -185,6 +226,7 @@ def crawl_market_vendors(
     scanned_at = datetime.now(timezone.utc).isoformat()
     scan_run_id = make_scan_run_id(scanned_at, category)
     loop_i = 0
+    prev_iter_start_icons: tuple[str, ...] | None = None
 
     print(f"[bulk-crawl] scan_run_id={scan_run_id}", flush=True)
 
@@ -197,7 +239,16 @@ def crawl_market_vendors(
             loop_i += 1
             park_cursor_on_back(back)
             frame = grab_screen_rect(market.left, market.top, market.width, market.height)
-            cur_fp = fingerprint_page(frame.bgr)
+            start_icons = list_icon_fingerprint_body(frame.bgr)
+            if prev_iter_start_icons is not None and start_icons == prev_iter_start_icons:
+                print(
+                    "[bulk-crawl] stopping list pagination — "
+                    "same page icons as previous iteration (Next did not advance)",
+                    flush=True,
+                )
+                break
+            prev_iter_start_icons = start_icons
+
             indicator = read_page_indicator_robust(frame.bgr, ocr)
             list_page = page_tracker.resolve(indicator, loop_i=loop_i)
             list_page_total_hint = page_tracker.total_hint
@@ -207,6 +258,7 @@ def crawl_market_vendors(
 
             rows = parse_page_rows(frame.bgr, page=list_page, ocr=ocr)
             rows_by_num = _rows_by_number(rows)
+            rows_to_open = rows_with_item_icons(frame.bgr)
             priced = sum(1 for r in rows if r.price_adena is not None)
             if len(rows) > 0 and priced == 0:
                 empty_pages += 1
@@ -215,11 +267,12 @@ def crawl_market_vendors(
 
             print(
                 f"[bulk-crawl] list page — {page_tracker.ocr_log_suffix(indicator)} "
-                f"— open rows 1–{ROWS_PER_PAGE}",
+                f"— open rows {_format_rows_label(rows_to_open)} "
+                f"({len(rows_to_open)}/{ROWS_PER_PAGE} icons)",
                 flush=True,
             )
 
-            for row_num in range(1, ROWS_PER_PAGE + 1):
+            for row_num in rows_to_open:
                 if run_control and run_control.should_stop():
                     print("[bulk-crawl] stopped — PAUSED", flush=True)
                     break
@@ -317,9 +370,6 @@ def crawl_market_vendors(
                 break
 
             stop, reason = _should_stop_bulk_list(
-                loop_i=loop_i,
-                prev_fp=prev_fp,
-                cur_fp=cur_fp,
                 empty_pages=empty_pages,
                 rows_this_page=len(rows),
             )
@@ -327,7 +377,17 @@ def crawl_market_vendors(
                 print(f"[bulk-crawl] stopping list pagination — {reason}", flush=True)
                 break
 
-            prev_fp = cur_fp
+            if is_reliable_last_page(indicator) or (
+                list_page_total_hint is not None
+                and list_page_total_hint >= 5
+                and list_page >= list_page_total_hint
+            ):
+                print(
+                    f"[bulk-crawl] stopping list pagination — "
+                    f"last page ({list_page}/{list_page_total_hint or '?'})",
+                    flush=True,
+                )
+                break
 
             if dry_run:
                 page_tracker.after_next_click()
@@ -335,13 +395,24 @@ def crawl_market_vendors(
                 continue
 
             assert pico is not None
-            page_tracker.after_next_click()
-            _click_list_next_page(
+            before_next_fp = _capture_list_fingerprint(market=market, back=back, next_btn=next_btn)
+            advanced, _after_next_fp = _next_list_page(
+                market=market,
+                back=back,
                 next_btn=next_btn,
                 pico=pico,
+                before_fp=before_next_fp,
                 page_delay_s=page_delay_s,
                 run_control=run_control,
             )
+            if not advanced:
+                print(
+                    "[bulk-crawl] stopping list pagination — "
+                    "Next did not change page (icon fingerprint unchanged)",
+                    flush=True,
+                )
+                break
+            page_tracker.after_next_click()
     finally:
         if pico is not None:
             pico.close()

@@ -28,7 +28,7 @@ python -m cli calibrate search
 python -m cli calibrate back
 
 python -m cli run
-# M+1 search, M+2 bulk, F12 start/stop
+# M+1 bulk, M+2 priority monitor, F12 start/stop
 ```
 
 PC moves the cursor; the Pico sends **CLICK** and **KEY** (USB HID, GameGuard-safe).

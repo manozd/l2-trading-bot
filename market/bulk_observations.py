@@ -8,7 +8,7 @@ from typing import Any
 
 from market.full_list_parser import MarketRow
 
-TRUSTED_IDENTITY_STATUSES = frozenset({"search_confirmed", "icon_name_confirmed"})
+from market.identity_status import is_trusted_identity
 
 
 def make_scan_run_id(scanned_at: str, category: str) -> str:
@@ -25,7 +25,7 @@ def can_aggregate_bulk_price(observation: dict[str, Any]) -> bool:
     """Bulk observations are discovery data — not trusted for min-price buckets."""
     identity = observation.get("identity") or {}
     status = identity.get("status")
-    if status not in TRUSTED_IDENTITY_STATUSES:
+    if not is_trusted_identity(status):
         return False
     for row in observation.get("vendor_rows") or []:
         score = row.get("price_confidence_score") or 0
@@ -81,8 +81,10 @@ def build_bulk_observation(
         },
         "identity": {
             "status": "unresolved",
+            "item_uid": None,
             "item_id": None,
             "item_name": None,
+            "possible_item_uids": [],
             "possible_item_ids": [],
             "source": "bulk_list_context",
         },

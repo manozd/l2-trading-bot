@@ -198,13 +198,13 @@ def scan_market_pages(
     return total_rows
 
 
-def collect_search_first_row(
+def collect_search_page_rows(
     *,
     roi_path: Path,
     category: str,
     scanned_at: str | None = None,
 ) -> list[dict]:
-    """After search+Enter: OCR page 1 and keep only row 1 (exact full-name match)."""
+    """After search+Enter: OCR all listing rows on page 1 (variants + row-1 price)."""
     cfg = load_market_roi_config(roi_path)
     market = cfg.require(REGION_MARKET_WINDOW)
     back = cfg.require(REGION_BACK_BUTTON)
@@ -218,15 +218,43 @@ def collect_search_first_row(
     rows = parse_page_rows(frame.bgr, page=1, ocr=ocr)
 
     if not rows:
-        print("[search] first row — no rows on page 1", flush=True)
+        print("[search] page 1 — no rows", flush=True)
         return []
 
-    first = next((r for r in rows if r.row == 1), rows[0])
-    label = first.item or first.raw_text[:60]
-    print(f"[search] first row only — row {first.row}: {label!r}", flush=True)
+    records: list[dict] = []
+    for row in rows:
+        if not row.item_icon_hash:
+            continue
+        label = row.item or row.raw_text[:60]
+        print(f"[search] row {row.row}: {label!r} icon={row.item_icon_hash[:20]}...", flush=True)
+        record = row.to_dict()
+        record["category"] = category
+        record["scanned_at"] = scanned_at
+        records.append(record)
 
-    record = first.to_dict()
-    record["category"] = category
-    record["scanned_at"] = scanned_at
-    record["search_first_row_only"] = True
-    return [record]
+    if not records:
+        print("[search] page 1 — rows present but none with item icons", flush=True)
+    return records
+
+
+def collect_search_first_row(
+    *,
+    roi_path: Path,
+    category: str,
+    scanned_at: str | None = None,
+) -> list[dict]:
+    """After search+Enter: OCR page 1 and keep only row 1 (legacy price pick)."""
+    rows = collect_search_page_rows(
+        roi_path=roi_path,
+        category=category,
+        scanned_at=scanned_at,
+    )
+    if not rows:
+        return []
+
+    first = next((r for r in rows if r.get("row") == 1), rows[0])
+    label = first.get("item") or (first.get("raw_text") or "")[:60]
+    print(f"[search] first row only — row {first.get('row')}: {label!r}", flush=True)
+    first = dict(first)
+    first["search_first_row_only"] = True
+    return [first]

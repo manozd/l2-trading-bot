@@ -7,6 +7,7 @@ import re
 from market.full_list_parser import MarketRow
 
 _GRADE_RE = re.compile(r"\(([a-z])-grade\)", re.I)
+_GEMSTONE_LETTER_RE = re.compile(r"^gemstone\s+([asbcd])\s*$", re.I)
 _MIN_ACCEPT_SCORE = 55
 
 _UI_CHROME = frozenset({
@@ -154,6 +155,23 @@ def _extract_grade(name: str) -> str | None:
     return m.group(1).casefold() if m else None
 
 
+def _gemstone_letter_grade(name: str) -> str | None:
+    """Target forms like ``Gemstone A`` / ``Gemstone S`` (not parenthetical)."""
+    m = _GEMSTONE_LETTER_RE.match(_norm(name))
+    return m.group(1).casefold() if m else None
+
+
+def _variant_suffix_words(target: str) -> tuple[str, list[str]] | None:
+    """Split ``Base - Suffix`` or ``Base: Suffix`` into base + significant suffix tokens."""
+    for sep in (" - ", ": "):
+        if sep in target:
+            base, suffix = target.split(sep, 1)
+            words = [w for w in re.split(r"[\s-]+", _norm(suffix)) if len(w) >= 3]
+            if words:
+                return _norm(base), words
+    return None
+
+
 def _strip_grade(name: str) -> str:
     return _GRADE_RE.sub("", _norm(name)).strip()
 
@@ -191,6 +209,27 @@ def _match_score(row_item: str, target_name: str) -> int:
 
     if item == target:
         return 100
+
+    target_gem = _gemstone_letter_grade(target)
+    if target_gem and "gemstone" in item:
+        row_gem = _extract_grade(item)
+        if row_gem == target_gem:
+            return 96
+
+    variant = _variant_suffix_words(target)
+    if variant is not None:
+        base_n, suffix_words = variant
+        item_n = _norm(item)
+        if item_n == base_n:
+            return 42
+        if item_n.startswith(base_n):
+            hits = sum(1 for w in suffix_words if w in item_n)
+            if hits == len(suffix_words):
+                if item_n == target:
+                    return 100
+                return 94
+            if hits and hits < len(suffix_words):
+                return 88
 
     target_grade = _extract_grade(target)
     row_grade = _extract_grade(item)

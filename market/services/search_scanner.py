@@ -1,23 +1,29 @@
-"""Production search-per-item scanner."""
+"""Production search-per-item scanner — M+2 catalog + matched-row price monitor."""
 
 from __future__ import annotations
 
-import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-from market.capture_rois import REGION_BACK_BUTTON, REGION_SEARCH_BOX, load_market_roi_config
-from market.catalog import load_item_refs
+from market.capture_rois import REGION_BACK_BUTTON, REGION_MARKET_WINDOW, REGION_SEARCH_BOX, load_market_roi_config
+from market.catalog import load_target_list_refs
 from market.constants import DEFAULT_PICO_COM
-from market.core.confidence import score_search_row
 from market.core.models import ItemRef, SearchResult, SearchRunConfig
 from market.countdown import wait_before_start
 from market.pico_hid import PicoHidSerial
-from market.scanner import collect_search_first_row
+from market.scanner import collect_search_page_rows
 from market.search import press_back_button, submit_search_query
-from market.storage.progress import ProgressStore
+from market.search_progress import M2_MODE_VERSION, SearchProgressStore, target_config_hash
+from market.services.priority_scan import (
+    catalog_scan_phase,
+    collect_search_rows_with_retry,
+    fallback_search_queries,
+    pick_matched_search_row,
+    priority_price_snapshot,
+)
 from market.storage.search_sink import SearchResultSink
 from market.run_control import RunControl
+from market.variant_catalog import VariantCatalog
 
 PROGRESS_NAME = "market_search_progress.json"
 
@@ -31,14 +37,23 @@ class SearchScanner:
         run_control: RunControl | None = None,
     ) -> None:
         self.config = config
-        self._target_lists = target_lists
+        self._target_lists = (target_lists or config.target_lists).resolve()
         self._run_control = run_control
         self._roi = load_market_roi_config(config.roi_path.resolve())
         self._validate_rois()
         self._search = self._roi.require(REGION_SEARCH_BOX)
         self._back = self._roi.require(REGION_BACK_BUTTON)
+        self._category_filter = self._yaml_category_filter()
+        self._config_hash = target_config_hash(
+            self._target_lists,
+            category_filter=self._category_filter,
+        )
         progress_path = config.out_jsonl.parent / PROGRESS_NAME
-        self._progress = ProgressStore(progress_path)
+        self._progress = SearchProgressStore(
+            progress_path,
+            mode_version=M2_MODE_VERSION,
+            config_hash=self._config_hash,
+        )
         self._sink = SearchResultSink(
             jsonl_path=config.out_jsonl.resolve(),
             validate_csv=config.validate_csv.resolve(),
@@ -46,6 +61,8 @@ class SearchScanner:
             min_json=config.min_json.resolve(),
             min_csv=config.min_csv.resolve(),
         )
+        self._catalog = VariantCatalog.load(config.variant_catalog_path.resolve())
+        self._catalog_dirty = False
 
     def _validate_rois(self) -> None:
         if REGION_MARKET_WINDOW not in self._roi.regions:
@@ -55,23 +72,30 @@ class SearchScanner:
             )
 
     def load_items(self) -> list[ItemRef]:
-        items = load_item_refs(
-            items_db=self.config.items_db.resolve(),
-            target_lists=self._target_lists,
-            category=self.config.category if self._target_lists else None,
-        )
-        if self.config.name_filter:
-            fl = self.config.name_filter.casefold()
+        items = load_target_list_refs(self._target_lists, category=self._category_filter)
+        cfg = self.config
+        if cfg.name_filter:
+            fl = cfg.name_filter.casefold()
             items = [
                 i
                 for i in items
                 if fl in i.search_name.casefold() or fl in i.display_name.casefold()
             ]
-        if self.config.start:
-            items = items[self.config.start :]
-        if self.config.limit:
-            items = items[: self.config.limit]
+        if cfg.start:
+            items = items[cfg.start :]
+        if cfg.limit:
+            items = items[: cfg.limit]
         return items
+
+    @staticmethod
+    def _yaml_category_filter_for(config: SearchRunConfig) -> str | None:
+        cat = (config.category or "").strip()
+        if not cat or cat == "search":
+            return None
+        return cat
+
+    def _yaml_category_filter(self) -> str | None:
+        return self._yaml_category_filter_for(self.config)
 
     def run(self) -> list[SearchResult]:
         cfg = self.config
@@ -79,10 +103,33 @@ class SearchScanner:
             raise SystemExit(f"Pico port required (default: {DEFAULT_PICO_COM})")
 
         items = self.load_items()
-        done = self._progress.load_done() if cfg.resume else set()
+        done = self._progress.load_done_item_ids() if cfg.resume else set()
+        pending = [i for i in items if not self._is_done(i, done)]
 
         if not cfg.resume:
             self._sink.reset()
+        elif self._progress.is_legacy_stale():
+            progress_path = cfg.out_jsonl.parent / PROGRESS_NAME
+            print(
+                "[search] resume — ignoring stale progress "
+                f"(mode {M2_MODE_VERSION}, config {self._config_hash}). "
+                f"Delete {progress_path.resolve()} to clear the old file.",
+                flush=True,
+            )
+        elif done:
+            progress_path = cfg.out_jsonl.parent / PROGRESS_NAME
+            print(
+                f"[search] resume ON — {len(done)} checkpoint(s), "
+                f"{len(pending)}/{len(items)} item(s) left "
+                f"(mode {M2_MODE_VERSION}, config {self._config_hash})",
+                flush=True,
+            )
+            if not pending:
+                print(
+                    "[search] all items already marked done — nothing to scan. "
+                    f"Delete {progress_path.resolve()} or run with --no-resume.",
+                    flush=True,
+                )
 
         if not cfg.dry_run:
             wait_before_start(cfg.start_delay_s, tag="search")
@@ -94,6 +141,20 @@ class SearchScanner:
         else:
             print(f"[search] dry-run items={len(items)}", flush=True)
 
+        print(
+            f"[search] target list: {self._target_lists} ({len(items)} items)",
+            flush=True,
+        )
+        print(
+            f"[search] variant catalog: {cfg.variant_catalog_path.resolve()} "
+            f"({len(self._catalog.entries)} entries loaded)",
+            flush=True,
+        )
+        print(
+            "[search] mode: catalog + matched-row min price (no vendor pages)",
+            flush=True,
+        )
+
         scanned_at = datetime.now(timezone.utc).isoformat()
 
         try:
@@ -104,53 +165,101 @@ class SearchScanner:
 
                 if self._is_done(item, done):
                     print(
-                        f"[search] skip ({i}/{len(items)}) {item.display_name!r} — resume",
+                        f"[search] skip ({i}/{len(items)}) {item.display_name!r} — resume "
+                        f"(see {cfg.out_jsonl.parent / PROGRESS_NAME})",
                         flush=True,
                     )
                     continue
 
                 print(f"[search] ({i}/{len(items)}) {item.display_name!r}", flush=True)
 
+                queries = fallback_search_queries(item.search_name)
+                raw_rows: list[dict] = []
+                used_query = item.search_name
+
                 if not cfg.dry_run:
                     assert pico is not None
-                    submit_search_query(
-                        item.search_name,
-                        search=self._search,
-                        pico=pico,
-                        settle_s=cfg.search_settle_s,
-                        input_mode=cfg.input_mode,
+                    for qi, query in enumerate(queries):
+                        if qi > 0:
+                            print(
+                                f"[search] fallback search {query!r} "
+                                f"(no rows for {item.search_name!r})",
+                                flush=True,
+                            )
+                        submit_search_query(
+                            query,
+                            search=self._search,
+                            pico=pico,
+                            settle_s=cfg.search_settle_s,
+                            input_mode=cfg.input_mode,
+                        )
+                        raw_rows = collect_search_rows_with_retry(
+                            roi_path=cfg.roi_path.resolve(),
+                            category=item.category or cfg.category,
+                            scanned_at=scanned_at,
+                        )
+                        if raw_rows:
+                            used_query = query
+                            break
+
+                print(f"[search] catalog_scan — {len(raw_rows)} visible variant row(s)", flush=True)
+                catalog_uids = catalog_scan_phase(
+                    self._catalog,
+                    raw_rows=raw_rows,
+                    search_query=item.search_name,
+                    display_name=item.display_name,
+                    item_id=item.item_id,
+                    category=item.category or cfg.category,
+                    scanned_at=scanned_at,
+                )
+                if catalog_uids:
+                    self._catalog_dirty = True
+                    print(
+                        f"[search] catalog +{len(catalog_uids)} variant(s): {', '.join(catalog_uids)}",
+                        flush=True,
                     )
 
-                raw_rows = collect_search_first_row(
-                    roi_path=cfg.roi_path.resolve(),
-                    category=cfg.category,
-                    scanned_at=scanned_at,
+                matched_row = pick_matched_search_row(
+                    raw_rows,
+                    search_name=item.search_name,
+                    search_query=used_query,
                 )
-                raw = raw_rows[0] if raw_rows else None
-                if raw:
-                    raw = dict(raw)
-                    raw["item_full_name"] = item.display_name
-                    raw["name_source"] = "db_search_query"
-                    raw["search_query"] = item.search_name
-                    raw["item_id"] = item.item_id
+                if matched_row:
+                    label = matched_row.get("item") or item.search_name
+                    price = matched_row.get("price_adena")
+                    if price is not None:
+                        print(
+                            f"[search] priority_price — matched row {matched_row.get('row')}: "
+                            f"{label!r} @ {int(price):,} adena",
+                            flush=True,
+                        )
+                    else:
+                        print(
+                            f"[search] priority_price — matched row {matched_row.get('row')}: "
+                            f"{label!r} (no price on row)",
+                            flush=True,
+                        )
+                else:
+                    print(
+                        f"[search] priority_price — no confident row match for {item.search_name!r}",
+                        flush=True,
+                    )
 
-                row_conf, price_conf = score_search_row(
-                    raw,
-                    db_name=item.search_name,
-                    expected_enchant=item.enchant,
-                )
-                result = SearchResult.from_db_row(
+                result = priority_price_snapshot(
                     item,
-                    raw,
+                    matched_row,
+                    category=item.category or cfg.category,
                     scanned_at=scanned_at,
-                    category=cfg.category,
-                    row_confidence=row_conf,
-                    price_confidence=price_conf,
+                    catalog=self._catalog,
                 )
 
                 self._sink.append(result)
                 self._sink.log_collected(result)
-                self._progress.mark_done(item.item_id, done)
+                self._progress.mark_done(
+                    item_id=item.item_id,
+                    search_query=item.search_name,
+                    done=done,
+                )
 
                 if self._run_control and self._run_control.should_stop():
                     print("[search] stopped — PAUSED", flush=True)
@@ -159,10 +268,18 @@ class SearchScanner:
                 if not cfg.dry_run and i < len(items):
                     assert pico is not None
                     press_back_button(back=self._back, pico=pico, settle_s=cfg.back_settle_s)
-                    time.sleep(0.1)
         finally:
             if pico is not None:
                 pico.close()
+            if self._catalog_dirty:
+                self._catalog.save()
+                stats = self._catalog.stats()
+                print(
+                    f"[search] saved variant catalog — {stats['entries']} entries, "
+                    f"{stats['groups_with_multiple_uids']} multi-variant groups → "
+                    f"{cfg.variant_catalog_path.resolve()}",
+                    flush=True,
+                )
 
         self._sink.finalize()
         self._sink.print_done()
@@ -170,7 +287,4 @@ class SearchScanner:
 
     @staticmethod
     def _is_done(item: ItemRef, done: set[str]) -> bool:
-        """Resume by item_id; also accept legacy search_name keys."""
-        kid = item.item_id.casefold()
-        base = item.search_name.casefold()
-        return kid in done or base in done
+        return item.item_id.casefold() in done

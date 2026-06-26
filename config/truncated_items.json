@@ -1,10 +1,10 @@
 {
   "schema_version": 2,
-  "updated_at": "2026-06-25T20:09:32.441765+00:00",
+  "updated_at": "2026-06-26T05:06:00.339725+00:00",
   "source": "market_pages",
-  "item_count": 627,
-  "unique_count": 219,
-  "ambiguous_count": 408,
+  "item_count": 636,
+  "unique_count": 216,
+  "ambiguous_count": 420,
   "ambiguous_prefixes": {
     "ancient book: divine in": 4,
     "ancient lesser giant bo": 2,
@@ -14,16 +14,20 @@
     "blade of the wizard's t": 2,
     "blessed scroll of escap": 2,
     "blessed scroll: enchant": 14,
-    "blessed spiritshot (b-g": 3,
-    "blessed spiritshot (c-g": 3,
+    "blessed spiritshot (a-g": 2,
+    "blessed spiritshot (b-g": 4,
+    "blessed spiritshot (c-g": 4,
+    "blessed spiritshot (d-g": 2,
+    "blessed spiritshot (s-g": 2,
     "blue soul crystal - sta": 4,
     "blue wolf breastplate p": 2,
     "blue wolf gaiter materi": 2,
     "blue wolf leather armor": 2,
     "blue wolf stocking patt": 3,
     "branch of the mother tr": 3,
-    "chef's fish stew - vict": 2,
-    "chef's fish stew - wate": 2,
+    "chef's fish stew - magn": 2,
+    "chef's fish stew - vict": 3,
+    "chef's fish stew - wate": 3,
     "dark legion's edge blad": 2,
     "elixir of life (s-grade": 2,
     "elixir of mind (s-grade": 2,
@@ -341,7 +345,7 @@
       "source": "market_pages",
       "updated_at": "2026-06-24T18:51:42.528396+00:00",
       "list_prefix": "blessed spiritshot (b-g",
-      "prefix_candidate_count": 3,
+      "prefix_candidate_count": 4,
       "identity_class": "ambiguous"
     },
     "100500550795f055c6d5cad59195399597f5db7579f56b75d7e53fe59fe53f65:111:blessedspiritshotcg": {
@@ -360,7 +364,7 @@
       "source": "market_pages",
       "updated_at": "2026-06-24T18:51:40.909936+00:00",
       "list_prefix": "blessed spiritshot (c-g",
-      "prefix_candidate_count": 3,
+      "prefix_candidate_count": 4,
       "identity_class": "ambiguous"
     },
     "100500751795f865e0d5c1d59bb53f755ee5fdf5d3e5a7e50fe53f657f65ffe5:111:bladeofthewizardst": {
@@ -1312,6 +1316,25 @@
       "list_prefix": "black ore necklace bead... mold glue",
       "prefix_candidate_count": 1,
       "identity_class": "unique"
+    },
+    "110150171fc81f261e7c1c3d118d135d1db317df12ff16bf197f19ff11ff1:111:blessedspiritshotcg": {
+      "item_key": "110150171fc81f261e7c1c3d118d135d1db317df12ff16bf197f19ff11ff1:111:blessedspiritshotcg",
+      "visible_name": "Blessed Spiritshot (C-g",
+      "item_icon_hash": "110150171fc81f261e7c1c3d118d135d1db317df12ff16bf197f19ff11ff1:111",
+      "item_slug": "blessedspiritshotcg",
+      "enchant": null,
+      "min_price_adena": 122,
+      "max_price_adena": 122,
+      "listing_count": 2,
+      "vendors": [
+        "KARGANGAL"
+      ],
+      "sample_page": 1,
+      "source": "bulk_scan",
+      "updated_at": "2026-06-26T05:05:13.870493+00:00",
+      "list_prefix": "blessed spiritshot (c-g",
+      "prefix_candidate_count": 4,
+      "identity_class": "ambiguous"
     },
     "1150a758ce5b1e563653de59be5b9e59be5b6f566f59bf52475d675c7b50015:111:tallumbladedarklegio": {
       "item_key": "1150a758ce5b1e563653de59be5b9e59be5b6f566f59bf52475d675c7b50015:111:tallumbladedarklegio",
@@ -3443,8 +3466,8 @@
       "source": "market_pages",
       "updated_at": "2026-06-24T18:51:42.528366+00:00",
       "list_prefix": "blessed spiritshot (a-g",
-      "prefix_candidate_count": 1,
-      "identity_class": "unique"
+      "prefix_candidate_count": 2,
+      "identity_class": "ambiguous"
     },
     "1508050015dd158d955f958dd586f506f516f516f5bb65a3e599e5b6653fe5:111:greaterstrdyestr": {
       "item_key": "1508050015dd158d955f958dd586f506f516f516f5bb65a3e599e5b6653fe5:111:greaterstrdyestr",
@@ -4967,6 +4990,25 @@
       "prefix_candidate_count": 15,
       "identity_class": "ambiguous"
     },
+    "28f32733c931c731b631ab315eb1ddb11db10631033183b1f3b10b3124b10001:223:chefsfishstewmagn": {
+      "item_key": "28f32733c931c731b631ab315eb1ddb11db10631033183b1f3b10b3124b10001:223:chefsfishstewmagn",
+      "visible_name": "Chef's Fish Stew - Magn",
+      "item_icon_hash": "28f32733c931c731b631ab315eb1ddb11db10631033183b1f3b10b3124b10001:223",
+      "item_slug": "chefsfishstewmagn",
+      "enchant": null,
+      "min_price_adena": 1000000,
+      "max_price_adena": 1000000,
+      "listing_count": 1,
+      "vendors": [
+        "ToxicPony"
+      ],
+      "sample_page": 4,
+      "source": "bulk_scan",
+      "updated_at": "2026-06-26T05:05:55.651960+00:00",
+      "list_prefix": "chef's fish stew - magn",
+      "prefix_candidate_count": 2,
+      "identity_class": "ambiguous"
+    },
     "299526956695cd95db955f955b95dbd55bd565f56df5cbf5f7f5c95500150005:110:tallumbootsheavyarmo20_e0": {
       "item_key": "299526956695cd95db955f955b95dbd55bd565f56df5cbf5f7f5c95500150005:110:tallumbootsheavyarmo20_e0",
       "visible_name": "Tallum Boots Heavy Armo... 2+0 +0",
@@ -6465,7 +6507,7 @@
       "source": "bulk_scan",
       "updated_at": "2026-06-25T19:03:22.155200+00:00",
       "list_prefix": "blessed spiritshot (c-g",
-      "prefix_candidate_count": 3,
+      "prefix_candidate_count": 4,
       "identity_class": "ambiguous"
     },
     "508054095f415471563556b554b75cb75c37596e597e58de55b657b656fe5:111:midgradelifestone": {
@@ -6636,7 +6678,7 @@
       "source": "bulk_scan",
       "updated_at": "2026-06-25T18:16:39.974836+00:00",
       "list_prefix": "blessed spiritshot (b-g",
-      "prefix_candidate_count": 3,
+      "prefix_candidate_count": 4,
       "identity_class": "ambiguous"
     },
     "520050255fc95e655ced5829519956dd59e755bf56bf5dfe51fe51fe51f65:111:blessedspiritshotcg": {
@@ -6655,7 +6697,7 @@
       "source": "bulk_scan",
       "updated_at": "2026-06-25T18:15:51.318120+00:00",
       "list_prefix": "blessed spiritshot (c-g",
-      "prefix_candidate_count": 3,
+      "prefix_candidate_count": 4,
       "identity_class": "ambiguous"
     },
     "52215847507e5f3e525e575e5b8e598e5bce5b1e539e539f533f50ff53ff5:111:sealedimperialcrusade": {
@@ -7188,8 +7230,8 @@
       "source": "bulk_scan",
       "updated_at": "2026-06-25T18:31:19.451156+00:00",
       "list_prefix": "chef's fish stew - magn",
-      "prefix_candidate_count": 1,
-      "identity_class": "unique"
+      "prefix_candidate_count": 2,
+      "identity_class": "ambiguous"
     },
     "70150f6517e5c7e54fe53be599e5bbe5b765b7657f659c6532e58f75f9f50015:111:sealeddraconicleather": {
       "item_key": "70150f6517e5c7e54fe53be599e5bbe5b765b7657f659c6532e58f75f9f50015:111:sealeddraconicleather",
@@ -7286,6 +7328,44 @@
       "list_prefix": "sealed dark crystal boo +0",
       "prefix_candidate_count": 1,
       "identity_class": "unique"
+    },
+    "71cb91f661c763c3d398d13dd1deb35f713df16bf1cff19ff1dff13ff34bb1:111:blessedspiritshotdg": {
+      "item_key": "71cb91f661c763c3d398d13dd1deb35f713df16bf1cff19ff1dff13ff34bb1:111:blessedspiritshotdg",
+      "visible_name": "Blessed Spiritshot (D-g",
+      "item_icon_hash": "71cb91f661c763c3d398d13dd1deb35f713df16bf1cff19ff1dff13ff34bb1:111",
+      "item_slug": "blessedspiritshotdg",
+      "enchant": null,
+      "min_price_adena": 70,
+      "max_price_adena": 70,
+      "listing_count": 2,
+      "vendors": [
+        "ZZw"
+      ],
+      "sample_page": 1,
+      "source": "bulk_scan",
+      "updated_at": "2026-06-26T05:05:10.170626+00:00",
+      "list_prefix": "blessed spiritshot (d-g",
+      "prefix_candidate_count": 2,
+      "identity_class": "ambiguous"
+    },
+    "71fd91f261c263c6d39ad13cd1dfb359713ef16ff14ff19ff11ff13ff36bb1:111:blessedspiritshotbg": {
+      "item_key": "71fd91f261c263c6d39ad13cd1dfb359713ef16ff14ff19ff11ff13ff36bb1:111:blessedspiritshotbg",
+      "visible_name": "Blessed Spiritshot (B-g",
+      "item_icon_hash": "71fd91f261c263c6d39ad13cd1dfb359713ef16ff14ff19ff11ff13ff36bb1:111",
+      "item_slug": "blessedspiritshotbg",
+      "enchant": null,
+      "min_price_adena": 663,
+      "max_price_adena": 663,
+      "listing_count": 2,
+      "vendors": [
+        "Vse"
+      ],
+      "sample_page": 2,
+      "source": "bulk_scan",
+      "updated_at": "2026-06-26T05:05:26.168091+00:00",
+      "list_prefix": "blessed spiritshot (b-g",
+      "prefix_candidate_count": 4,
+      "identity_class": "ambiguous"
     },
     "7715f865e0d5c1d593b52f75def5fdf5d3e5ade51fe53f657f65ffe5b6750015:111:darklegionsedgeblad": {
       "item_key": "7715f865e0d5c1d593b52f75def5fdf5d3e5ade51fe53f657f65ffe5b6750015:111:darklegionsedgeblad",
@@ -7516,6 +7596,25 @@
       "prefix_candidate_count": 13,
       "identity_class": "ambiguous"
     },
+    "80050071fc91f261c741c6d19ad134d3def15df12ff16bf1c7f19ff39ff13ff1:111:blessedspiritshotsg": {
+      "item_key": "80050071fc91f261c741c6d19ad134d3def15df12ff16bf1c7f19ff39ff13ff1:111:blessedspiritshotsg",
+      "visible_name": "Blessed Spiritshot (S-g",
+      "item_icon_hash": "80050071fc91f261c741c6d19ad134d3def15df12ff16bf1c7f19ff39ff13ff1:111",
+      "item_slug": "blessedspiritshotsg",
+      "enchant": null,
+      "min_price_adena": 750,
+      "max_price_adena": 750,
+      "listing_count": 2,
+      "vendors": [
+        "3inaida"
+      ],
+      "sample_page": 2,
+      "source": "bulk_scan",
+      "updated_at": "2026-06-26T05:05:28.103127+00:00",
+      "list_prefix": "blessed spiritshot (s-g",
+      "prefix_candidate_count": 2,
+      "identity_class": "ambiguous"
+    },
     "80090001000900150915e0550dd585b503752375a375c76543654365cb6546e5:112:recipebluewolftunic": {
       "item_key": "80090001000900150915e0550dd585b503752375a375c76543654365cb6546e5:112:recipebluewolftunic",
       "visible_name": "Recipe: Blue Wolf Tunic",
@@ -7646,7 +7745,7 @@
       "source": "bulk_scan",
       "updated_at": "2026-06-25T19:03:50.514312+00:00",
       "list_prefix": "blessed spiritshot (b-g",
-      "prefix_candidate_count": 3,
+      "prefix_candidate_count": 4,
       "identity_class": "ambiguous"
     },
     "80150815f8558ff583b52375a375b375c76543654365cb6556e596e56de57675:111:recipespiritshotsg": {
@@ -8655,7 +8754,7 @@
       "source": "market_pages",
       "updated_at": "2026-06-24T18:52:11.583981+00:00",
       "list_prefix": "chef's fish stew - wate",
-      "prefix_candidate_count": 2,
+      "prefix_candidate_count": 3,
       "identity_class": "ambiguous"
     },
     "90001000900150075c9658ee5076575e5bde59f653de599e537e56de576e5:111:jewelrycouponsgrade": {
@@ -9492,7 +9591,7 @@
       "source": "market_pages",
       "updated_at": "2026-06-24T18:52:13.567254+00:00",
       "list_prefix": "chef's fish stew - vict",
-      "prefix_candidate_count": 2,
+      "prefix_candidate_count": 3,
       "identity_class": "ambiguous"
     },
     "900011009001519353fe57be58de574e5bae599e535e5b3f571f559f559f5:111:foundationsealedtateo": {
@@ -9951,6 +10050,25 @@
       "prefix_candidate_count": 2,
       "identity_class": "ambiguous"
     },
+    "9df14df36ef1e67163b165f3e4f1e5b1eb714db149f158f19db1b77148911031:112:greatermaqichastepot": {
+      "item_key": "9df14df36ef1e67163b165f3e4f1e5b1eb714db149f158f19db1b77148911031:112:greatermaqichastepot",
+      "visible_name": "Greater Maqic Haste Pot",
+      "item_icon_hash": "9df14df36ef1e67163b165f3e4f1e5b1eb714db149f158f19db1b77148911031:112",
+      "item_slug": "greatermaqichastepot",
+      "enchant": null,
+      "min_price_adena": 110000,
+      "max_price_adena": 110000,
+      "listing_count": 1,
+      "vendors": [
+        "Nomy"
+      ],
+      "sample_page": 3,
+      "source": "bulk_scan",
+      "updated_at": "2026-06-26T05:05:38.304734+00:00",
+      "list_prefix": "greater maqic haste pot",
+      "prefix_candidate_count": 1,
+      "identity_class": "unique"
+    },
     "a0557f95dff56ce5d3e519e53965336561654f65c3659de506e546e539e50615:122:blessedscrollofescap": {
       "item_key": "a0557f95dff56ce5d3e519e53965336561654f65c3659de506e546e539e50615:122:blessedscrollofescap",
       "visible_name": "Blessed Scroll of Escap",
@@ -10370,6 +10488,25 @@
       "prefix_candidate_count": 3,
       "identity_class": "ambiguous"
     },
+    "c1110c718731cd3387b3b2712b715cb3cdb116b1067103f181b173b18b333471:122:chefsfishstewvict": {
+      "item_key": "c1110c718731cd3387b3b2712b715cb3cdb116b1067103f181b173b18b333471:122:chefsfishstewvict",
+      "visible_name": "Chef's Fish Stew - Vict",
+      "item_icon_hash": "c1110c718731cd3387b3b2712b715cb3cdb116b1067103f181b173b18b333471:122",
+      "item_slug": "chefsfishstewvict",
+      "enchant": null,
+      "min_price_adena": 1100000,
+      "max_price_adena": 1100000,
+      "listing_count": 1,
+      "vendors": [
+        "DVL"
+      ],
+      "sample_page": 4,
+      "source": "bulk_scan",
+      "updated_at": "2026-06-26T05:05:57.342195+00:00",
+      "list_prefix": "chef's fish stew - vict",
+      "prefix_candidate_count": 3,
+      "identity_class": "ambiguous"
+    },
     "c2158dd51e75d9f55af592f59ae5a6e553e56de570e5c7651f653fe5d6750015:011:sealedshieldofnightm": {
       "item_key": "c2158dd51e75d9f55af592f59ae5a6e553e56de570e5c7651f653fe5d6750015:011:sealedshieldofnightm",
       "visible_name": "Sealed Shield of Nightm",
@@ -10674,6 +10811,25 @@
       "list_prefix": "tallum blade*damascus -",
       "prefix_candidate_count": 1,
       "identity_class": "unique"
+    },
+    "cd93f243c761c6d190d139d1dff1c9713cf12ff14bf19ff19ff13ff1ebb10011:111:blessedspiritshotag": {
+      "item_key": "cd93f243c761c6d190d139d1dff1c9713cf12ff14bf19ff19ff13ff1ebb10011:111:blessedspiritshotag",
+      "visible_name": "Blessed Spiritshot (A-g",
+      "item_icon_hash": "cd93f243c761c6d190d139d1dff1c9713cf12ff14bf19ff19ff13ff1ebb10011:111",
+      "item_slug": "blessedspiritshotag",
+      "enchant": null,
+      "min_price_adena": 640,
+      "max_price_adena": 640,
+      "listing_count": 2,
+      "vendors": [
+        "3inaida"
+      ],
+      "sample_page": 2,
+      "source": "bulk_scan",
+      "updated_at": "2026-06-26T05:05:24.238568+00:00",
+      "list_prefix": "blessed spiritshot (a-g",
+      "prefix_candidate_count": 2,
+      "identity_class": "ambiguous"
     },
     "cde50f6567e575e5bfe59fe53be593e537e567e566e5d4e5b8e5031504150005:111:weaponcouponbestag": {
       "item_key": "cde50f6567e575e5bfe59fe53be593e537e567e566e5d4e5b8e5031504150005:111:weaponcouponbestag",
@@ -11224,8 +11380,8 @@
       "source": "market_pages",
       "updated_at": "2026-06-24T18:51:43.270295+00:00",
       "list_prefix": "blessed spiritshot (s-g",
-      "prefix_candidate_count": 1,
-      "identity_class": "unique"
+      "prefix_candidate_count": 2,
+      "identity_class": "ambiguous"
     },
     "dc0151a95c195f8559f3563d52ce583e5e0e551a5976537655fe53be52f65:112:spellbookmysticimmun": {
       "item_key": "dc0151a95c195f8559f3563d52ce583e5e0e551a5976537655fe53be52f65:112:spellbookmysticimmun",
@@ -11379,6 +11535,25 @@
       "prefix_candidate_count": 1,
       "identity_class": "unique"
     },
+    "e31c133cfb1b6b1ab715ab3ddb10db10631033183b1f3b113b16c7102010031:222:chefsfishstewwate": {
+      "item_key": "e31c133cfb1b6b1ab715ab3ddb10db10631033183b1f3b113b16c7102010031:222:chefsfishstewwate",
+      "visible_name": "Chef's Fish Stew - Wate",
+      "item_icon_hash": "e31c133cfb1b6b1ab715ab3ddb10db10631033183b1f3b113b16c7102010031:222",
+      "item_slug": "chefsfishstewwate",
+      "enchant": null,
+      "min_price_adena": 999999,
+      "max_price_adena": 999999,
+      "listing_count": 1,
+      "vendors": [
+        "DVL"
+      ],
+      "sample_page": 4,
+      "source": "bulk_scan",
+      "updated_at": "2026-06-26T05:05:54.053235+00:00",
+      "list_prefix": "chef's fish stew - wate",
+      "prefix_candidate_count": 3,
+      "identity_class": "ambiguous"
+    },
     "e395c095b01532157535d5b5b67529e519e5a5657765dfe5df65427520150005:001:lowgrademagicornamen": {
       "item_key": "e395c095b01532157535d5b5b67529e519e5a5657765dfe5df65427520150005:001:lowgrademagicornamen",
       "visible_name": "Low-grade Magic Ornamen",
@@ -11471,8 +11646,8 @@
       "source": "market_pages",
       "updated_at": "2026-06-24T18:51:40.909864+00:00",
       "list_prefix": "blessed spiritshot (d-g",
-      "prefix_candidate_count": 1,
-      "identity_class": "unique"
+      "prefix_candidate_count": 2,
+      "identity_class": "ambiguous"
     },
     "e5d5d6552f75cfb5a7b535a535a5a7659ee56d65e66552e59d65936544150045:111:sealeddraconicleather": {
       "item_key": "e5d5d6552f75cfb5a7b535a535a5a7659ee56d65e66552e59d65936544150045:111:sealeddraconicleather",
@@ -11585,7 +11760,7 @@
       "source": "bulk_scan",
       "updated_at": "2026-06-25T18:30:44.751586+00:00",
       "list_prefix": "chef's fish stew - wate",
-      "prefix_candidate_count": 2,
+      "prefix_candidate_count": 3,
       "identity_class": "ambiguous"
     },
     "e658b258f25a5e52265556599251da506e506e587e5e5651365486500950025:122:chefsfishstewvict": {
@@ -11604,7 +11779,7 @@
       "source": "bulk_scan",
       "updated_at": "2026-06-25T18:32:58.089134+00:00",
       "list_prefix": "chef's fish stew - vict",
-      "prefix_candidate_count": 2,
+      "prefix_candidate_count": 3,
       "identity_class": "ambiguous"
     },
     "e958c95f0153e15c75568e50f2555e5f9e512e535e55b6537e56f6590150015:111:ancientspellbookvolc": {

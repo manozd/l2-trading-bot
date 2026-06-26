@@ -128,6 +128,7 @@ def _scan_search_results(
     search_name: str,
     query: str,
     qty_needed: int | None,
+    prefer_vendor_list: bool = False,
     run_control: RunControl | None = None,
 ) -> tuple[MarketRow | None, MarketRow | None, list[MarketRow]]:
     """
@@ -163,7 +164,11 @@ def _scan_search_results(
             search_name,
             search_query=query,
         )
-        if price_row and _can_use_search_results_min_price(price_row, qty_needed):
+        if (
+            not prefer_vendor_list
+            and price_row
+            and _can_use_search_results_min_price(price_row, qty_needed)
+        ):
             page_label = _page_label(indicator, page_i)
             print(
                 f"[craft-price] matched {search_name!r} on search results{page_label}",
@@ -513,6 +518,119 @@ def _back_to_search_hub(
         print(f"[craft-price] back ×{count} — search hub", flush=True)
 
 
+def open_vendor_list_price_from_results(
+    *,
+    item_id: str,
+    search_name: str,
+    search_query: str | None = None,
+    roi_path: Path,
+    pico: PicoHidSerial,
+    back: RoiRect,
+    qty_needed: int | None = 1,
+    max_vendor_pages: int = MAX_VENDOR_PAGES,
+    back_settle_s: float = CRAFT_BACK_SETTLE_S,
+    run_control: RunControl | None = None,
+) -> MaterialPrice:
+    """
+    Search results screen → pick row → vendor list → back ×2 to search hub.
+
+    Assumes the search query was already submitted and results are visible.
+    """
+    scanned_at = datetime.now(timezone.utc).isoformat()
+    query = search_query or search_name
+    market_cfg = load_market_roi_config(roi_path)
+    market = market_cfg.require(REGION_MARKET_WINDOW)
+
+    picked, _, visible = _scan_search_results(
+        roi_path=roi_path,
+        pico=pico,
+        search_name=search_name,
+        query=query,
+        qty_needed=qty_needed,
+        prefer_vendor_list=True,
+        run_control=run_control,
+    )
+
+    if picked is None:
+        note = (
+            "no row match on a loaded search-results page"
+            if visible
+            else "search results empty or not readable"
+        )
+        print(f"[search] vendor open failed — {note}", flush=True)
+        _back_to_search_hub(
+            back=back,
+            pico=pico,
+            back_settle_s=back_settle_s,
+            count=1,
+            run_control=run_control,
+        )
+        return MaterialPrice(
+            item_id=item_id,
+            search_name=search_name,
+            unit_price_adena=None,
+            scanned_at=scanned_at,
+            availability=AVAILABILITY_SCAN_UNCERTAIN,
+            availability_note=note,
+            listing_count=0,
+        )
+
+    click_row = visual_click_row(visible, picked)
+    print(
+        f"[search] open vendors — row {click_row}: {picked.item!r}",
+        flush=True,
+    )
+    _click_search_result_row(
+        market=market,
+        row=click_row,
+        pico=pico,
+        run_control=run_control,
+    )
+    sleep_checked(CRAFT_VENDOR_SETTLE_S, run_control=run_control)
+
+    listings = collect_vendor_listings(
+        roi_path=roi_path,
+        pico=pico,
+        qty_needed=qty_needed,
+        max_pages=max_vendor_pages,
+        run_control=run_control,
+    )
+    price = _summarize_listings(
+        listings,
+        item_id=item_id,
+        search_name=search_name,
+        scanned_at=scanned_at,
+        qty_needed=qty_needed,
+    )
+
+    if price.unit_price_adena is not None and price.availability == AVAILABILITY_AVAILABLE:
+        print(
+            f"[search] {search_name!r} → {price.unit_price_adena:,} adena "
+            f"({price.listing_count} listings, best vendor {price.vendor!r})",
+            flush=True,
+        )
+    elif price.availability == AVAILABILITY_NOT_ON_MARKET:
+        print(
+            f"[search] {search_name!r} — no vendor listings ({price.availability_note})",
+            flush=True,
+        )
+    else:
+        print(
+            f"[search] {search_name!r} — {price.availability_note or price.availability}",
+            flush=True,
+        )
+
+    _back_to_search_hub(
+        back=back,
+        pico=pico,
+        back_settle_s=back_settle_s,
+        count=2,
+        run_control=run_control,
+    )
+    check_stop(run_control)
+    return price
+
+
 def fetch_material_vendor_price(
     *,
     item_id: str,
@@ -527,6 +645,8 @@ def fetch_material_vendor_price(
     back_settle_s: float = CRAFT_BACK_SETTLE_S,
     input_mode: str = "pico",
     fast: bool = False,
+    prefer_vendor_list: bool = False,
+    max_vendor_pages: int = MAX_VENDOR_PAGES,
     run_control: RunControl | None = None,
 ) -> MaterialPrice:
     """
@@ -574,11 +694,16 @@ def fetch_material_vendor_price(
             search_name=search_name,
             query=query,
             qty_needed=qty_needed,
+            prefer_vendor_list=prefer_vendor_list,
             run_control=run_control,
         )
         last_visible = visible
 
-        if price_row and _can_use_search_results_min_price(price_row, qty_needed):
+        if (
+            not prefer_vendor_list
+            and price_row
+            and _can_use_search_results_min_price(price_row, qty_needed)
+        ):
             price = _summarize_search_result_row(
                 price_row,
                 item_id=item_id,
@@ -640,6 +765,7 @@ def fetch_material_vendor_price(
             roi_path=roi_path,
             pico=pico,
             qty_needed=qty_needed,
+            max_pages=max_vendor_pages,
             run_control=run_control,
         )
         price = _summarize_listings(

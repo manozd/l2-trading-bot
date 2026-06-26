@@ -36,7 +36,7 @@ def load_jsonl_rows(path: Path) -> list[dict[str, Any]]:
     return rows
 
 
-TRUSTED_IDENTITY_STATUSES = frozenset({"search_confirmed", "icon_name_confirmed", "matched"})
+from market.identity_status import TRUSTED_IDENTITY_STATUSES, is_trusted_identity
 
 
 def can_aggregate_price(row: dict[str, Any]) -> bool:
@@ -52,7 +52,7 @@ def can_aggregate_price(row: dict[str, Any]) -> bool:
     except (TypeError, ValueError):
         return False
     status = (row.get("identity") or {}).get("status") or row.get("identity_status")
-    if status is not None and status not in TRUSTED_IDENTITY_STATUSES:
+    if status is not None and not is_trusted_identity(status):
         return False
     conf_name = row.get("price_confidence")
     if conf_name in ("low", "none"):

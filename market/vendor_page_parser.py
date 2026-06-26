@@ -44,7 +44,16 @@ def is_plausible_vendor_listing(row: dict[str, Any]) -> bool:
     return True
 
 
-def _normalize_vendor_row(row: dict[str, Any]) -> dict[str, Any]:
+def _normalize_vendor_row(row: dict[str, Any]) -> dict[str, Any] | None:
+    price = row.get("price_adena")
+    if price is None:
+        return None
+    try:
+        price_i = int(price)
+    except (TypeError, ValueError):
+        return None
+    if price_i <= 0:
+        return None
     item = row.get("item")
     if is_garbage_vendor_item(item):
         item = None
@@ -58,7 +67,7 @@ def _normalize_vendor_row(row: dict[str, Any]) -> dict[str, Any]:
         "item": item,
         "vendor": vendor_norm or None,
         "vendor_ocr": vendor_raw,
-        "price_adena": int(row["price_adena"]),
+        "price_adena": price_i,
         "units": row.get("units"),
         "price_confidence": conf,
         "price_confidence_score": _CONFIDENCE_SCORE[conf],
@@ -82,6 +91,6 @@ def parse_vendor_page_rows(
     out: list[dict[str, Any]] = []
     for row in rows:
         record = _normalize_vendor_row(row.to_dict())
-        if is_plausible_vendor_listing(record):
+        if record is not None and is_plausible_vendor_listing(record):
             out.append(record)
     return out

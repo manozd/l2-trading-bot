@@ -12,10 +12,12 @@ from market.truncated_storage import DEFAULT_TRUNCATED_ITEMS_PATH
 from market.core.confidence import PriceConfidence
 from market.core.item_id import item_id_from_name
 from market.enchant import validate_search_enchant
-from market.items_db import DEFAULT_ITEMS_DB, ItemDbEntry
+from market.items_db import ItemDbEntry
 from market.search_input import INPUT_PICO
 
 _LOGS = PROJECT_ROOT / "logs"
+DEFAULT_VARIANT_CATALOG_PATH = PROJECT_ROOT / "config" / "item_variant_catalog.json"
+DEFAULT_TARGET_LISTS = PROJECT_ROOT / "config" / "target_lists.yaml"
 
 IdentityStatus = Literal["unresolved", "matched", "ambiguous", "rejected"]
 ItemNameSource = Literal["db_search_query", "ocr_truncated"]
@@ -149,7 +151,11 @@ class SearchResult:
             "min_price_adena": self.price_adena,
             "vendor": vendor,
             "units": self.units,
-            "listing_count": 1 if self.price_adena is not None else 0,
+            "listing_count": (
+                int(self.raw_row["listing_count"])
+                if self.raw_row and self.raw_row.get("listing_count") is not None
+                else (1 if self.price_adena is not None else 0)
+            ),
             "vendors": [vendor] if vendor else [],
             "sample_page": self.raw_row.get("page") if self.raw_row else None,
             "found": self.found,
@@ -161,6 +167,10 @@ class SearchResult:
             "ocr_enchant": self.ocr_enchant,
             "enchant_match": self.enchant_match,
             "reject_reason": self.reject_reason,
+            "item_uid": self.raw_row.get("item_uid") if self.raw_row else None,
+            "item_icon_hash": self.raw_row.get("item_icon_hash") if self.raw_row else None,
+            "identity_status": self.raw_row.get("identity_status") if self.raw_row else None,
+            "price_source": self.raw_row.get("price_source") if self.raw_row else None,
         }
 
 
@@ -202,7 +212,7 @@ class UnresolvedListing:
 @dataclass
 class SearchRunConfig:
     roi_path: Path = DEFAULT_MARKET_ROI_PATH
-    items_db: Path = DEFAULT_ITEMS_DB
+    target_lists: Path = DEFAULT_TARGET_LISTS
     pico_com: str = DEFAULT_PICO_COM
     category: str = "search"
     input_mode: str = INPUT_PICO
@@ -219,6 +229,8 @@ class SearchRunConfig:
     min_csv: Path = field(default_factory=lambda: _LOGS / "market_search_min.csv")
     validate_csv: Path = field(default_factory=lambda: _LOGS / "market_search_validate.csv")
     validate_log: Path = field(default_factory=lambda: _LOGS / "market_search_validate.log")
+    variant_catalog_path: Path = field(default_factory=lambda: DEFAULT_VARIANT_CATALOG_PATH)
+    max_vendor_pages: int = 15
 
 
 @dataclass

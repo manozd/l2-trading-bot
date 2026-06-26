@@ -22,7 +22,7 @@ from market.craft.recipe_db import (
     load_all_recipes,
 )
 from market.daemon_prompt import prompt_recipe_name
-from market.items_db import DEFAULT_ITEMS_DB
+from market.catalog import DEFAULT_TARGET_LISTS, load_target_list_refs
 from market.roi_calibrate import run_region_calibration
 from market.run_control import RunControl, StopRequested
 from market.search_input import INPUT_PICO
@@ -45,7 +45,6 @@ _CALIB_BY_HOTKEY: dict[str, str] = {
 class DaemonConfig:
     roi_path: Path = DEFAULT_MARKET_ROI_PATH
     pico_com: str = DEFAULT_PICO_COM
-    items_db: Path = DEFAULT_ITEMS_DB
     start_delay_s: float = 10.0
     calibrate_delay_s: float = 2.0
     monitor: int | None = None
@@ -56,6 +55,8 @@ class DaemonConfig:
     bulk_vendor_page_delay_s: float = 0.2
     bulk_max_vendor_pages: int = 1
     search_resume: bool = True
+    search_targets: Path = DEFAULT_TARGET_LISTS
+    search_category: str = ""
     craft_recipes_dir: Path = DEFAULT_RECIPES_DIR
     craft_prices_dir: Path = DEFAULT_CRAFT_PRICES_DIR
 
@@ -105,8 +106,8 @@ class MarketDaemon:
             bind("c+2", lambda: self._enqueue("calib:2"), suppress=False),
             bind("c+3", lambda: self._enqueue("calib:3"), suppress=False),
             bind("c+4", lambda: self._enqueue("calib:4"), suppress=False),
-            bind("m+1", lambda: self._enqueue("mode:search"), suppress=False),
-            bind("m+2", lambda: self._enqueue("mode:bulk"), suppress=False),
+            bind("m+1", lambda: self._enqueue("mode:bulk"), suppress=False),
+            bind("m+2", lambda: self._enqueue("mode:search"), suppress=False),
             bind("m+3", lambda: self._enqueue("mode:craft"), suppress=False),
             bind("f12", lambda: self._on_f12(), suppress=False),
         ]
@@ -142,6 +143,7 @@ class MarketDaemon:
                 print("[daemon] mode change ignored while running", flush=True)
                 return
             self._mode = "search"
+            self._print_search_mode_hint()
             self._print_status()
             return
 
@@ -151,8 +153,8 @@ class MarketDaemon:
                 return
             self._mode = "bulk"
             print(
-                "[daemon] bulk crawl — open full market list, then F12 "
-                "(each item → all vendor pages → back)",
+                "[daemon] M+1 bulk crawl — open full market list, then F12 "
+                "(each row → vendor page 1 → back)",
                 flush=True,
             )
             self._print_status()
@@ -172,7 +174,7 @@ class MarketDaemon:
 
         if self._mode is None:
             print(
-                "[daemon] F12 — select mode first: M+1 search, M+2 bulk, M+3 craft",
+                "[daemon] F12 — select mode first: M+1 bulk, M+2 priority monitor, M+3 craft",
                 flush=True,
             )
             return
@@ -188,15 +190,22 @@ class MarketDaemon:
         try:
             if self._mode == "search":
                 wait_before_start(cfg.start_delay_s, tag="search")
+                targets_path = cfg.search_targets.resolve()
+                load_target_list_refs(targets_path)  # fail fast before countdown if missing
                 search_cfg = SearchRunConfig(
                     roi_path=cfg.roi_path,
-                    items_db=cfg.items_db,
+                    target_lists=targets_path,
                     pico_com=cfg.pico_com,
                     input_mode=INPUT_PICO,
                     start_delay_s=0.0,
                     resume=cfg.search_resume,
+                    category=cfg.search_category.strip() or "search",
                 )
-                SearchScanner(search_cfg, run_control=self._run_control).run()
+                SearchScanner(
+                    search_cfg,
+                    target_lists=targets_path,
+                    run_control=self._run_control,
+                ).run()
             elif self._mode == "bulk":
                 wait_before_start(cfg.start_delay_s, tag="bulk")
                 print(
@@ -256,6 +265,22 @@ class MarketDaemon:
         if self._worker is not None and not self._worker.is_alive():
             self._worker = None
             self._state = "paused"
+
+    def _print_search_mode_hint(self) -> None:
+        cfg = self.config
+        path = cfg.search_targets.resolve()
+        cat = cfg.search_category.strip() or None
+        try:
+            items = load_target_list_refs(path, category=cat)
+        except SystemExit as exc:
+            print(f"[daemon] {exc}", flush=True)
+            return
+        cat_note = f" category={cat!r}" if cat else ""
+        print(
+            f"[daemon] M+2 priority monitor — {len(items)} items from {path}{cat_note}, "
+            "then F12 (trusted prices + variant catalog)",
+            flush=True,
+        )
 
     def _select_craft_mode(self) -> None:
         initial = self._craft_recipe_name or ""
@@ -335,8 +360,9 @@ class MarketDaemon:
             "    C+1  market window (search / next / back derived automatically)\n"
             "    C+2..4  same as C+1\n"
             "  Mode (while paused):\n"
-            "    M+1  search scan     M+2  bulk crawl (full list → vendors)\n"
-            "    M+3  craft cost — enter item name in dialog\n"
+            "    M+1  full market bulk crawl (discovery)\n"
+            "    M+2  priority items (target_lists.yaml) — prices + catalog\n"
+            "    M+3  craft cost — enter recipe name in dialog\n"
             "  F12  start selected mode / stop run gracefully\n"
             "  Ctrl+C  quit\n",
             flush=True,

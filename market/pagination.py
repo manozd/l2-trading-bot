@@ -72,12 +72,25 @@ def read_page_indicator(bgr: np.ndarray, ocr) -> PageIndicator | None:
 
 
 def is_plausible_list_indicator(indicator: PageIndicator | None) -> bool:
-    """Reject common OCR garbage such as ``999/999``."""
+    """Reject common OCR garbage such as ``999/999`` or ``77/2``."""
     if indicator is None:
         return False
     if indicator.total >= 500:
         return False
+    if indicator.total < indicator.current:
+        return False
+    # ``25/2`` — total OCR dropped digits; keep current, reject total.
+    if indicator.current > 10 and indicator.total < 10:
+        return False
     return 1 <= indicator.current <= indicator.total
+
+
+def is_reliable_last_page(indicator: PageIndicator | None) -> bool:
+    """True when OCR coherently shows the final list page (e.g. ``25/25``)."""
+    if not is_plausible_list_indicator(indicator):
+        return False
+    assert indicator is not None
+    return indicator.current >= indicator.total and indicator.total >= 5
 
 
 def read_page_indicator_robust(bgr: np.ndarray, ocr) -> PageIndicator | None:
@@ -119,8 +132,14 @@ class ListPageTracker:
             elif abs(indicator.current - self.page) <= 2:
                 self.page = indicator.current
             if self.total_hint is None:
-                self.total_hint = indicator.total
-            elif abs(indicator.total - self.total_hint) <= 3:
+                if indicator.total >= indicator.current and (
+                    indicator.current <= 10 or indicator.total >= 10
+                ):
+                    self.total_hint = indicator.total
+            elif (
+                abs(indicator.total - self.total_hint) <= 3
+                and indicator.total >= indicator.current
+            ):
                 self.total_hint = indicator.total
             return self.page
 

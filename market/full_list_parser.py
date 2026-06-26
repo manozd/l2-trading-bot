@@ -9,7 +9,7 @@ from typing import Any
 import numpy as np
 from PIL import Image
 
-from market.icon_hash import icon_hash_from_row
+from market.icon_hash import icon_hash_from_row, row_icon_slot_occupied
 from market.item_identity import item_slug, make_item_key
 from market.ocr_engine import get_ocr_engine, run_ocr
 from market.row_fields import PriceConfidence, parse_fields_from_lines
@@ -162,6 +162,35 @@ def icon_hash_for_list_row(
     idx = max(0, min(row - 1, len(bands) - 1))
     y0, y1 = bands[idx]
     return icon_hash_from_row(bgr[y0:y1, :])
+
+
+def list_row_occupied(
+    bgr: np.ndarray,
+    row: int,
+    *,
+    top_frac: float = TOP_FRAC,
+    rows_per_page: int = ROWS_PER_PAGE,
+) -> bool:
+    """True when a list row band contains a visible item icon."""
+    bands = _row_bands(bgr.shape[0], top_frac=top_frac, rows_per_page=rows_per_page)
+    idx = max(0, min(row - 1, len(bands) - 1))
+    y0, y1 = bands[idx]
+    return row_icon_slot_occupied(bgr[y0:y1, :])
+
+
+def rows_with_item_icons(
+    bgr: np.ndarray,
+    *,
+    top_frac: float = TOP_FRAC,
+    rows_per_page: int = ROWS_PER_PAGE,
+) -> list[int]:
+    """1-based rows whose icon slot looks occupied (checked independently, every row)."""
+    bands = _row_bands(bgr.shape[0], top_frac=top_frac, rows_per_page=rows_per_page)
+    return [
+        i
+        for i, (y0, y1) in enumerate(bands, start=1)
+        if row_icon_slot_occupied(bgr[y0:y1, :])
+    ]
 
 
 def _row_bands(

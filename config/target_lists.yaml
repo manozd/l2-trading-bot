@@ -1,5 +1,5 @@
-# Target lists for: python -m cli search --targets config/target_lists.yaml
-# Or set category filter: python -m cli search --category currency
+# M+2 priority items — daemon M+2 or: python -m cli search
+# Group by category; optional filter: python -m cli search --category currency
 
 currency:
   - Coin of Luck
@@ -15,4 +15,4 @@ olympiad:
 profit:
   - Giant's Codex
   - Giant's Codex - Mastery
-  - Top-Grade Life Stone: level 76
+  - Top-Grade Life Stone
