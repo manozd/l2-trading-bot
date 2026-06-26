@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -11,6 +10,7 @@ from market.core.confidence import PriceConfidence, score_search_row
 from market.core.models import ItemRef, SearchResult
 from market.craft.match import find_search_result_price_row, pick_result_row
 from market.full_list_parser import MarketRow
+from market.run_control import RunControl, check_stop, sleep_checked
 from market.scanner import collect_search_page_rows
 from market.variant_catalog import VariantCatalog, make_item_uid
 
@@ -54,21 +54,25 @@ def collect_search_rows_with_retry(
     roi_path: Path,
     category: str,
     scanned_at: str,
+    run_control: RunControl | None = None,
 ) -> list[dict[str, Any]]:
     """OCR search results; one short retry when the list is still loading."""
+    check_stop(run_control)
     rows = collect_search_page_rows(
         roi_path=roi_path,
         category=category,
         scanned_at=scanned_at,
+        run_control=run_control,
     )
     if rows:
         return rows
-    time.sleep(_SEARCH_RETRY_S)
+    sleep_checked(_SEARCH_RETRY_S, run_control=run_control)
     print("[search] retry OCR — results list was empty", flush=True)
     return collect_search_page_rows(
         roi_path=roi_path,
         category=category,
         scanned_at=scanned_at,
+        run_control=run_control,
     )
 
 

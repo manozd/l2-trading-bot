@@ -115,7 +115,11 @@ class MarketDaemon:
     def _on_f12(self) -> None:
         """F12: stop immediately when running (do not wait for queue poll)."""
         if self._state == "running":
-            print("[daemon] F12 — stop requested …", flush=True)
+            print("[daemon] F12 — stop requested (aborting run …)", flush=True)
+            self._run_control.request_stop()
+            return
+        if self._state == "calibrating":
+            print("[daemon] F12 — stop during calibration (finish overlay or Ctrl+C)", flush=True)
             self._run_control.request_stop()
             return
         self._enqueue("toggle")
@@ -189,7 +193,7 @@ class MarketDaemon:
         cfg = self.config
         try:
             if self._mode == "search":
-                wait_before_start(cfg.start_delay_s, tag="search")
+                wait_before_start(cfg.start_delay_s, tag="search", run_control=self._run_control)
                 targets_path = cfg.search_targets.resolve()
                 load_target_list_refs(targets_path)  # fail fast before countdown if missing
                 search_cfg = SearchRunConfig(
@@ -207,7 +211,7 @@ class MarketDaemon:
                     run_control=self._run_control,
                 ).run()
             elif self._mode == "bulk":
-                wait_before_start(cfg.start_delay_s, tag="bulk")
+                wait_before_start(cfg.start_delay_s, tag="bulk", run_control=self._run_control)
                 print(
                     "[daemon] bulk crawl — open the full market list in-game before countdown ends",
                     flush=True,
@@ -246,6 +250,8 @@ class MarketDaemon:
             print("[daemon] run stopped", flush=True)
         except Exception as exc:
             print(f"[daemon] run error: {exc}", flush=True)
+        finally:
+            self._run_control.clear()
 
     def _check_worker_done(self) -> None:
         if self._worker is None or self._worker.is_alive():

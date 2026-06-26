@@ -22,6 +22,11 @@ from market.craft.models import (
 )
 from market.craft.price_cache import merge_price_into_cache
 from market.craft.recipe_db import collect_material_qty_map, collect_unique_materials, load_recipe_by_id
+from market.craft.trusted_lookup import (
+    TrustedPriceLookup,
+    seed_prices_from_trusted,
+    trusted_hit_to_material_price,
+)
 from market.craft.vendor_search import (
     CRAFT_BACK_SETTLE_S,
     CRAFT_SEARCH_SETTLE_S,
@@ -29,6 +34,7 @@ from market.craft.vendor_search import (
 )
 from market.pico_hid import PicoHidSerial
 from market.run_control import RunControl, StopRequested
+from market.trusted_prices import DEFAULT_TRUSTED_GROUPED_CSV
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_RECIPES_DIR = PROJECT_ROOT / "config" / "recipes"
@@ -82,7 +88,7 @@ def _format_scan_date(scanned_at: str) -> str:
 
 def _line_status_suffix(line: CostLine) -> str:
     if line.method == "buy" and line.price_is_stale:
-        return f" (cached — scan uncertain{_note_suffix(line.availability_note)})"
+        return f" (cached - scan uncertain{_note_suffix(line.availability_note)})"
     if line.method == "buy" and line.availability == AVAILABILITY_INSUFFICIENT_QTY:
         return f" (insufficient stock{_note_suffix(line.availability_note)})"
     if line.method in ("buy", "missing") and line.availability == AVAILABILITY_NOT_ON_MARKET:
@@ -109,7 +115,7 @@ def _premium_note(buy: int | None, craft: int | None) -> str:
     delta = buy - craft
     pct = 100 * delta / craft
     if abs(pct) < 0.5:
-        return " (buy ≈ craft)"
+        return " (buy ~= craft)"
     if pct > 0:
         return f" (buy +{pct:.0f}% vs craft {format_adena(craft)}/ea)"
     return f" (buy {pct:.0f}% vs craft {format_adena(craft)}/ea)"
@@ -133,7 +139,7 @@ def _print_buy_leaves(
         )
         if show_diy_alt and line.children and line.craft_cost is not None:
             print(
-                f"{'  ' * indent}  ↳ or craft from raw mats (~{format_adena(line.craft_cost)}/ea):",
+                f"{'  ' * indent}  or craft from raw mats (~{format_adena(line.craft_cost)}/ea):",
                 flush=True,
             )
             for child in line.children:
@@ -143,7 +149,7 @@ def _print_buy_leaves(
         for child in line.children:
             _print_buy_leaves(child, indent=indent, qty_mult=need, show_diy_alt=show_diy_alt)
         return
-    print(f"{'  ' * indent}? {need}x {line.search_name} — no market price", flush=True)
+    print(f"{'  ' * indent}? {need}x {line.search_name} - no market price", flush=True)
 
 
 def _print_component_plan(
@@ -160,7 +166,7 @@ def _print_component_plan(
         status = _line_status_suffix(line)
         print(
             f"  {line.search_name} x{line.qty}: BUY @ {format_adena(line.buy_price)}/ea"
-            f"{note}{status} → {format_adena(line.total_cost)}{alt}",
+            f"{note}{status} -> {format_adena(line.total_cost)}{alt}",
             flush=True,
         )
         return
@@ -180,11 +186,11 @@ def _print_component_plan(
             alt = (
                 f" [market buy {format_adena(line.buy_price)}/ea"
                 f"{_premium_note(line.buy_price, line.craft_cost)}"
-                f" — above +{buy_premium_threshold * 100:.0f}% time-saver limit]"
+                f" - above +{buy_premium_threshold * 100:.0f}% time-saver limit]"
             )
         print(
             f"  {line.search_name} x{line.qty}: CRAFT @ {format_adena(line.craft_cost)}/ea "
-            f"→ {format_adena(line.total_cost)} (buy materials below){alt}",
+            f"-> {format_adena(line.total_cost)} (buy materials below){alt}",
             flush=True,
         )
         for child in line.children:
@@ -203,7 +209,7 @@ def _print_component_plan_conv(line: CostLine, *, compare_line: CostLine | None)
         status = _line_status_suffix(line)
         print(
             f"  {line.search_name} x{line.qty}: BUY @ {format_adena(line.buy_price)}/ea"
-            f"{note}{status} → {format_adena(line.total_cost)}{alt}",
+            f"{note}{status} -> {format_adena(line.total_cost)}{alt}",
             flush=True,
         )
         return
@@ -216,7 +222,7 @@ def _print_component_plan_conv(line: CostLine, *, compare_line: CostLine | None)
             )
         print(
             f"  {line.search_name} x{line.qty}: CRAFT @ {format_adena(line.craft_cost)}/ea "
-            f"→ {format_adena(line.total_cost)} (buy/craft materials below){alt}",
+            f"-> {format_adena(line.total_cost)} (buy/craft materials below){alt}",
             flush=True,
         )
         for child in line.children:
@@ -231,7 +237,7 @@ def _missing_label(line: CostLine) -> str:
     if line.availability == AVAILABILITY_SCAN_UNCERTAIN:
         if line.buy_price is not None:
             return (
-                f"SCAN UNCERTAIN — using cached {format_adena(line.buy_price)}/ea"
+                f"SCAN UNCERTAIN - using cached {format_adena(line.buy_price)}/ea"
                 f"{_note_suffix(line.availability_note)}"
             )
         return f"SCAN UNCERTAIN{_note_suffix(line.availability_note)}"
@@ -251,12 +257,12 @@ def _collect_plan_diffs(
             note = _buy_vs_craft_note(conv_ln)
             extra_unit = conv_ln.unit_cost - min_ln.unit_cost
             rows.append(
-                f"  {path}: CRAFT → BUY{note} "
+                f"  {path}: CRAFT -> BUY{note} "
                 f"(+{format_adena(extra_unit)}/ea, skip nested crafting)"
             )
         elif conv_ln.method == "craft" and min_ln.method == "buy":
             rows.append(
-                f"  {path}: BUY → CRAFT "
+                f"  {path}: BUY -> CRAFT "
                 f"(saves {format_adena(min_ln.total_cost - conv_ln.total_cost)})"
             )
     min_by_id = {c.item_id: c for c in min_ln.children}
@@ -264,7 +270,7 @@ def _collect_plan_diffs(
         mn_child = min_by_id.get(cv_child.item_id)
         if mn_child is not None:
             rows.extend(
-                _collect_plan_diffs(mn_child, cv_child, prefix=f"{path} → ")
+                _collect_plan_diffs(mn_child, cv_child, prefix=f"{path} -> ")
             )
     return rows
 
@@ -316,10 +322,10 @@ def print_craft_report(report: CraftCostReport) -> None:
     print(f"\n=== Craft cost: {report.recipe_name} ===", flush=True)
     print(f"  Success rate:     {report.success_rate * 100:.0f}%", flush=True)
     print(f"  Adena fee:        {format_adena(report.adena_fee)}", flush=True)
-    materials_note = "" if report.materials_complete else " (incomplete — see unavailable below)"
+    materials_note = "" if report.materials_complete else " (incomplete - see unavailable below)"
     print(f"  Materials:        {format_adena(report.material_cost)}{materials_note}", flush=True)
     print(f"  Per attempt:      {format_adena(report.cost_per_attempt)}", flush=True)
-    expected_note = "" if report.materials_complete else " (partial — not all materials buyable)"
+    expected_note = "" if report.materials_complete else " (partial - not all materials buyable)"
     print(
         f"  Expected/success: {format_adena(report.expected_cost_per_success)}{expected_note}",
         flush=True,
@@ -328,9 +334,9 @@ def print_craft_report(report: CraftCostReport) -> None:
         print(f"  Buy finished item: {format_adena(report.finished_bow_buy_price)}", flush=True)
         if report.expected_cost_per_success > 0 and report.materials_complete:
             if report.finished_bow_buy_price < report.expected_cost_per_success:
-                print("  → Cheaper to BUY finished item than craft", flush=True)
+                print("  -> Cheaper to BUY finished item than craft", flush=True)
             else:
-                print("  → Cheaper to CRAFT than buy finished item", flush=True)
+                print("  -> Cheaper to CRAFT than buy finished item", flush=True)
     else:
         print("  Buy finished item: not available (search failed or not scanned)", flush=True)
     if report.unavailable_items:
@@ -367,7 +373,7 @@ def print_craft_report(report: CraftCostReport) -> None:
     if report.convenience_lines is not None:
         pct = report.buy_premium_threshold * 100
         print(
-            f"\n  --- Time-saver plan (buy intermediate if market ≤ +{pct:.0f}% vs craft) ---",
+            f"\n  --- Time-saver plan (buy intermediate if market <= +{pct:.0f}% vs craft) ---",
             flush=True,
         )
         _print_plan_summary(
@@ -401,6 +407,9 @@ class CraftPriceScanner:
         dry_run: bool = False,
         fetch: bool = True,
         include_finished_bow: bool = True,
+        use_trusted_prices: bool = True,
+        trusted_grouped_csv: Path = DEFAULT_TRUSTED_GROUPED_CSV,
+        trusted_max_age_hours: float = 48.0,
         run_control: RunControl | None = None,
     ) -> None:
         self.recipe_id = recipe_id
@@ -416,7 +425,13 @@ class CraftPriceScanner:
         self.dry_run = dry_run
         self.fetch = fetch
         self.include_finished_bow = include_finished_bow
+        self.use_trusted_prices = use_trusted_prices
+        self.trusted_grouped_csv = trusted_grouped_csv
+        self.trusted_max_age_hours = trusted_max_age_hours
         self._run_control = run_control
+        self._trusted_lookup: TrustedPriceLookup | None = None
+        self._need_live_ids: set[str] | None = None
+        self._finished_from_trusted: int | None = None
 
     def run(self) -> CraftCostReport:
         recipe = load_recipe_by_id(self.recipe_id, recipes_dir=self.recipes_dir)
@@ -427,14 +442,18 @@ class CraftPriceScanner:
         prices = load_cached_prices(self.prices_path)
         finished_price: int | None = None
 
+        self._seed_trusted_prices(recipe, materials, prices)
+
         if self.fetch and self.dry_run:
-            print("[craft-cost] dry-run — would fetch:", flush=True)
+            print("[craft-cost] dry-run - would fetch:", flush=True)
             for mat in materials:
                 print(f"  - {mat.search_name!r} ({mat.item_id})", flush=True)
             if self.include_finished_bow:
                 print(f"  - finished: {recipe.search_name!r}", flush=True)
         elif self.fetch:
             finished_price = self._fetch_live_prices(materials, prices, recipe)
+            if finished_price is None and self._finished_from_trusted is not None:
+                finished_price = self._finished_from_trusted
             save_prices_cache(self.prices_path, recipe_id=self.recipe_id, prices=prices)
         elif not prices:
             print(
@@ -464,8 +483,90 @@ class CraftPriceScanner:
             report=report,
         )
         print_craft_report(report)
-        print(f"[craft-cost] cache → {self.prices_path.resolve()}", flush=True)
+        print(f"[craft-cost] cache -> {self.prices_path.resolve()}", flush=True)
         return report
+
+    def _seed_trusted_prices(
+        self,
+        recipe: Recipe,
+        materials: list[RecipeComponent],
+        prices: dict[str, MaterialPrice],
+    ) -> None:
+        if not self.use_trusted_prices:
+            return
+        csv_path = self.trusted_grouped_csv.resolve()
+        if not csv_path.is_file():
+            print(
+                f"[craft-cost] trusted prices not found at {csv_path} "
+                "(run: python -m cli trusted-prices)",
+                flush=True,
+            )
+            return
+        try:
+            lookup = TrustedPriceLookup.load(grouped_csv=csv_path)
+        except Exception as exc:
+            print(f"[craft-cost] trusted prices load failed: {exc}", flush=True)
+            return
+        if not lookup:
+            print("[craft-cost] trusted grouped CSV is empty", flush=True)
+            return
+
+        self._trusted_lookup = lookup
+        qty_map = collect_material_qty_map(recipe)
+        hits, need_live = seed_prices_from_trusted(
+            lookup,
+            materials=materials,
+            qty_map=qty_map,
+            prices=prices,
+            max_age_hours=self.trusted_max_age_hours,
+        )
+        self._need_live_ids = set(need_live)
+        print(
+            f"[craft-cost] trusted grouped: {hits}/{len(materials)} material(s) from "
+            f"{csv_path.name} ({len(lookup)} rows, max age {self.trusted_max_age_hours:g}h)",
+            flush=True,
+        )
+        for mat in materials:
+            mp = prices.get(mat.item_id)
+            if mp and mp.source == "trusted_grouped" and mat.item_id not in self._need_live_ids:
+                print(
+                    f"[craft-cost]   trusted {mat.search_name!r} @ {mp.unit_price_adena:,} adena"
+                    f" ({mp.vendor or '?'}) - skip crawl",
+                    flush=True,
+                )
+            elif mat.item_id in self._need_live_ids and mp and mp.source == "trusted_grouped":
+                print(
+                    f"[craft-cost]   trusted partial {mat.search_name!r} - will crawl vendors",
+                    flush=True,
+                )
+
+        if self.include_finished_bow:
+            finished_hit = lookup.lookup_finished_item(
+                recipe_id=recipe.recipe_id,
+                search_name=recipe.search_name,
+            )
+            if finished_hit and not lookup.is_stale(
+                finished_hit, max_age_hours=self.trusted_max_age_hours,
+            ):
+                finished_key = f"{self.recipe_id}_finished"
+                mp = trusted_hit_to_material_price(
+                    finished_hit,
+                    item_id=finished_key,
+                    search_name=recipe.search_name,
+                    qty_needed=1,
+                )
+                prices[finished_key] = mp
+                self._finished_from_trusted = finished_hit.min_price
+                print(
+                    f"[craft-cost]   trusted finished {recipe.search_name!r} @ "
+                    f"{finished_hit.min_price:,} adena ({finished_hit.vendor or '?'})",
+                    flush=True,
+                )
+
+    def _should_crawl_material(self, item_id: str) -> bool:
+        if self._need_live_ids is None:
+            return True
+        return item_id in self._need_live_ids
 
     def _fetch_live_prices(
         self,
@@ -488,8 +589,10 @@ class CraftPriceScanner:
         try:
             for i, mat in enumerate(materials, start=1):
                 if self._run_control and self._run_control.should_stop():
-                    print("[craft-cost] stop requested — finishing after current item", flush=True)
+                    print("[craft-cost] stop requested - finishing after current item", flush=True)
                     break
+                if not self._should_crawl_material(mat.item_id):
+                    continue
                 print(f"[craft-cost] ({i}/{len(materials)}) {mat.search_name!r}", flush=True)
                 try:
                     price = fetch_material_vendor_price(
@@ -508,7 +611,7 @@ class CraftPriceScanner:
                         run_control=self._run_control,
                     )
                 except StopRequested:
-                    print("[craft-cost] stop requested — aborting scan", flush=True)
+                    print("[craft-cost] stop requested - aborting scan", flush=True)
                     break
                 except Exception as exc:
                     print(f"[craft-cost] skip {mat.search_name!r}: {exc}", flush=True)
@@ -525,11 +628,15 @@ class CraftPriceScanner:
                     )
                     continue
                 if self._run_control and self._run_control.should_stop():
-                    print("[craft-cost] stop requested — aborting scan", flush=True)
+                    print("[craft-cost] stop requested - aborting scan", flush=True)
                     break
                 prices[mat.item_id] = merge_price_into_cache(prices.get(mat.item_id), price)
 
-            if self.include_finished_bow and not (self._run_control and self._run_control.should_stop()):
+            if (
+                self.include_finished_bow
+                and not (self._run_control and self._run_control.should_stop())
+                and self._finished_from_trusted is None
+            ):
                 print(f"[craft-cost] finished item {recipe.search_name!r}", flush=True)
                 try:
                     bow_price = fetch_material_vendor_price(
@@ -568,7 +675,7 @@ class CraftPriceScanner:
                             flush=True,
                         )
                 except StopRequested:
-                    print("[craft-cost] stop requested — aborting scan", flush=True)
+                    print("[craft-cost] stop requested - aborting scan", flush=True)
                 except Exception as exc:
                     print(f"[craft-cost] skip finished {recipe.search_name!r}: {exc}", flush=True)
         finally:

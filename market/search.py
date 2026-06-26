@@ -68,6 +68,30 @@ def click_roi(
     sleep_checked(settle_s, run_control=run_control)
 
 
+def clear_search_field(
+    search: RoiRect,
+    pico: PicoHidSerial,
+    *,
+    settle_s: float = 0.12,
+    run_control: RunControl | None = None,
+) -> None:
+    """Focus search box and wipe stale filter text before the next query."""
+    check_stop(run_control)
+    click_roi(
+        search,
+        pico,
+        label="search box (clear)",
+        settle_s=0.15,
+        fast=True,
+        run_control=run_control,
+    )
+    sleep_checked(0.06, run_control=run_control)
+    pico.click_left(hold_ms=80, double=True)
+    sleep_checked(0.08, run_control=run_control)
+    pico.clear_field(backspaces=96, run_control=run_control)
+    sleep_checked(settle_s, run_control=run_control)
+
+
 def focus_search_box(
     search: RoiRect,
     pico: PicoHidSerial,
@@ -103,14 +127,18 @@ def submit_search_query(
 ) -> None:
     """Click search box, enter text, Pico Enter to apply filter."""
     check_stop(run_control)
+    use_pico_clear = input_mode == INPUT_PICO
     focus_search_box(
         search,
         pico,
         settle_s=0.2 if fast else 0.25,
         fast=fast,
-        clear=(input_mode == INPUT_PICO),
+        clear=False,
         run_control=run_control,
     )
+    if use_pico_clear:
+        pico.clear_field(backspaces=96, run_control=run_control)
+        sleep_checked(0.08, run_control=run_control)
 
     if input_mode == INPUT_PASTE:
         print("[search] clipboard set + PC Ctrl+A/V (often blocked in L2 / GameGuard)", flush=True)

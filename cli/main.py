@@ -12,7 +12,7 @@ if str(ROOT) not in sys.path:
 
 from market.capture_rois import DEFAULT_MARKET_ROI_PATH, REGION_MARKET_WINDOW
 from market.constants import DEFAULT_PICO_COM
-from market.catalog import DEFAULT_TARGET_LISTS
+from market.catalog import DEFAULT_TARGET_LISTS, load_target_list_refs
 from market.core.models import BulkRunConfig, SearchRunConfig, DEFAULT_VARIANT_CATALOG_PATH
 from market.daemon import DaemonConfig, run_daemon
 from market.pico_hid import PicoHidSerial
@@ -20,7 +20,8 @@ from market.roi_calibrate import run_region_calibration
 from market.search import submit_search_query
 from market.search_input import INPUT_PASTE, INPUT_PC, INPUT_PICO
 from market.services.bulk_scanner import BulkScanner
-from market.services.search_scanner import SearchScanner
+from market.services.craft_scanner import CraftPriceScanner, DEFAULT_CRAFT_PRICES_DIR, DEFAULT_RECIPES_DIR
+from market.services.search_scanner import SearchScanner, PROGRESS_NAME
 from market.build_truncated_list import build_truncated_list_from_pages
 from market.truncated_storage import DEFAULT_TRUNCATED_ITEMS_PATH, DEFAULT_TRUNCATED_LISTINGS_PATH
 from market.catalog_dedupe import dedupe_catalog, print_dedupe_summary
@@ -41,6 +42,7 @@ from market.trusted_prices import (
     write_trusted_grouped_csv,
     write_trusted_jsonl,
 )
+from market.search_progress import M2_MODE_VERSION, SearchProgressStore, target_config_hash
 from market.variant_catalog import VariantCatalog
 
 _LOGS = ROOT / "logs"
@@ -55,7 +57,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     _add_run_command(sub)
     _add_search_command(sub)
+    _add_search_progress_command(sub)
     _add_bulk_command(sub)
+    _add_craft_cost_command(sub)
     _add_calibrate_command(sub)
     _add_test_keys_command(sub)
     _add_validate_pages_command(sub)
@@ -88,7 +92,12 @@ def _add_run_command(sub: argparse._SubParsersAction) -> None:
     p.add_argument("--bulk-page-delay", type=float, default=0.45)
     p.add_argument("--bulk-vendor-page-delay", type=float, default=0.2)
     p.add_argument("--bulk-max-vendor-pages", type=int, default=1)
-    p.add_argument("--no-resume", action="store_true", help="Search: do not skip completed items")
+    p.add_argument("--no-resume", action="store_true", help="Search: clear progress and rescan all items")
+    p.add_argument(
+        "--force-rescan",
+        action="store_true",
+        help="Alias for --no-resume (clear progress, rescan all)",
+    )
     p.set_defaults(func=cmd_run)
 
 
@@ -113,6 +122,86 @@ def _add_search_command(sub: argparse._SubParsersAction) -> None:
     p.add_argument("--filter", type=str, default="", dest="name_filter")
     p.add_argument("--delay", type=float, default=10.0)
     p.set_defaults(func=cmd_search)
+
+
+def _add_search_progress_command(sub: argparse._SubParsersAction) -> None:
+    p = sub.add_parser("search-progress", help="M+2 resume checkpoint (mid-run crash recovery)")
+    p.add_argument(
+        "--targets",
+        type=Path,
+        default=DEFAULT_TARGET_LISTS,
+        help="Target list used to compute config hash",
+    )
+    p.add_argument("--category", type=str, default="", help="Category filter (must match daemon if used)")
+    p.add_argument(
+        "--path",
+        type=Path,
+        default=_LOGS / PROGRESS_NAME,
+        help="Progress file (default: logs/market_search_progress.json)",
+    )
+    sub2 = p.add_subparsers(dest="progress_cmd", required=True)
+    sub2.add_parser("status", help="Show completed items and whether resume will skip them").set_defaults(
+        func=cmd_search_progress_status,
+    )
+    sub2.add_parser("reset", help="Clear progress — next M+2 run scans from item 1").set_defaults(
+        func=cmd_search_progress_reset,
+    )
+
+
+def _search_progress_store(ns: argparse.Namespace) -> SearchProgressStore:
+    cat_filter = (ns.category or "").strip() or None
+    if cat_filter == "search":
+        cat_filter = None
+    config_hash = target_config_hash(ns.targets.resolve(), category_filter=cat_filter)
+    return SearchProgressStore(
+        ns.path.resolve(),
+        mode_version=M2_MODE_VERSION,
+        config_hash=config_hash,
+    )
+
+
+def cmd_search_progress_status(ns: argparse.Namespace) -> None:
+    store = _search_progress_store(ns)
+    done = store.load_done_item_ids()
+    snap = store.save_snapshot()
+    path = store.path.resolve()
+    target_items = load_target_list_refs(
+        ns.targets.resolve(),
+        category=(ns.category or "").strip() or None if (ns.category or "").strip() != "search" else None,
+    )
+    total = len(target_items)
+    print(f"Progress: {path}", flush=True)
+    print(f"  mode: {M2_MODE_VERSION}", flush=True)
+    print(f"  config_hash: {snap.get('target_config_hash', '(none)')}", flush=True)
+    print(f"  completed: {len(done)}/{total} item(s)", flush=True)
+    if store.is_legacy_stale():
+        print("  status: STALE (will be ignored on next run)", flush=True)
+    elif done and total and len(done) >= total:
+        print("  status: run complete - next M+2 will refresh all items automatically", flush=True)
+    elif done:
+        print(
+            "  status: interrupted — next M+2 resumes from first incomplete item",
+            flush=True,
+        )
+    else:
+        print("  status: empty — next M+2 scans all items", flush=True)
+    for entry in snap.get("completed") or []:
+        if isinstance(entry, dict):
+            print(
+                f"    - {entry.get('item_id')}  "
+                f"query={entry.get('search_query')!r}  done_at={entry.get('done_at')}",
+                flush=True,
+            )
+
+
+def cmd_search_progress_reset(ns: argparse.Namespace) -> None:
+    store = _search_progress_store(ns)
+    path = store.path.resolve()
+    if path.is_file():
+        store.clear()
+        print(f"[search-progress] cleared {path}", flush=True)
+    else:
+        print(f"[search-progress] nothing to clear ({path} not found)", flush=True)
 
 
 def _add_bulk_command(sub: argparse._SubParsersAction) -> None:
@@ -153,6 +242,36 @@ def _add_bulk_command(sub: argparse._SubParsersAction) -> None:
         help="Registry of truncated item keys (config/truncated_items.json)",
     )
     p.set_defaults(func=cmd_bulk)
+
+
+def _add_craft_cost_command(sub: argparse._SubParsersAction) -> None:
+    p = sub.add_parser(
+        "craft-cost",
+        help="M+3 craft cost report — uses grouped trusted prices, crawls only missing materials",
+    )
+    p.add_argument("--recipe", default="draconic_bow", help="Recipe id (config/recipes/<id>.json)")
+    p.add_argument("--roi-config", type=Path, default=DEFAULT_MARKET_ROI_PATH)
+    p.add_argument("--pico-com", type=str, default=DEFAULT_PICO_COM)
+    p.add_argument("--recipes-dir", type=Path, default=DEFAULT_RECIPES_DIR)
+    p.add_argument("--prices-dir", type=Path, default=DEFAULT_CRAFT_PRICES_DIR)
+    p.add_argument(
+        "--trusted-grouped-csv",
+        type=Path,
+        default=DEFAULT_TRUSTED_GROUPED_CSV,
+        help="Grouped trusted prices CSV (default: logs/trusted_min_prices_grouped.csv)",
+    )
+    p.add_argument(
+        "--trusted-max-age",
+        type=float,
+        default=48.0,
+        help="Hours before a trusted price is stale and triggers vendor crawl",
+    )
+    p.add_argument("--delay", type=float, default=10.0)
+    p.add_argument("--limit", type=int, default=0, help="Limit unique materials (debug)")
+    p.add_argument("--fetch", action="store_true", help="Crawl vendors for materials missing from trusted CSV")
+    p.add_argument("--no-trusted", action="store_true", help="Ignore grouped trusted prices")
+    p.add_argument("--dry-run", action="store_true")
+    p.set_defaults(func=cmd_craft_cost)
 
 
 def _add_calibrate_command(sub: argparse._SubParsersAction) -> None:
@@ -389,7 +508,7 @@ def cmd_run(ns: argparse.Namespace) -> None:
         bulk_page_delay_s=ns.bulk_page_delay,
         bulk_vendor_page_delay_s=ns.bulk_vendor_page_delay,
         bulk_max_vendor_pages=ns.bulk_max_vendor_pages,
-        search_resume=not ns.no_resume,
+        search_resume=not (ns.no_resume or ns.force_rescan),
         search_targets=ns.targets.resolve(),
         search_category=ns.search_category,
     )
@@ -413,6 +532,23 @@ def cmd_search(ns: argparse.Namespace) -> None:
         resume=ns.resume,
     )
     SearchScanner(cfg).run()
+
+
+def cmd_craft_cost(ns: argparse.Namespace) -> None:
+    CraftPriceScanner(
+        recipe_id=ns.recipe,
+        roi_path=ns.roi_config,
+        pico_com=ns.pico_com,
+        recipes_dir=ns.recipes_dir,
+        prices_dir=ns.prices_dir,
+        start_delay_s=ns.delay,
+        limit=ns.limit,
+        dry_run=ns.dry_run,
+        fetch=ns.fetch,
+        use_trusted_prices=not ns.no_trusted,
+        trusted_grouped_csv=ns.trusted_grouped_csv,
+        trusted_max_age_hours=ns.trusted_max_age,
+    ).run()
 
 
 def cmd_bulk(ns: argparse.Namespace) -> None:

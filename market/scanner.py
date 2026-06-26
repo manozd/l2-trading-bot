@@ -18,7 +18,7 @@ from market.ocr_engine import get_ocr_engine
 from market.page_fingerprint import PageFingerprint, fingerprint_page, page_unchanged
 from market.pagination import PageIndicator, read_page_indicator
 from market.pico_hid import PicoHidSerial
-from market.run_control import RunControl
+from market.run_control import RunControl, check_stop
 from market.search import park_cursor_on_back
 
 EMPTY_PAGE_STOP = 2
@@ -203,8 +203,10 @@ def collect_search_page_rows(
     roi_path: Path,
     category: str,
     scanned_at: str | None = None,
+    run_control: RunControl | None = None,
 ) -> list[dict]:
     """After search+Enter: OCR all listing rows on page 1 (variants + row-1 price)."""
+    check_stop(run_control)
     cfg = load_market_roi_config(roi_path)
     market = cfg.require(REGION_MARKET_WINDOW)
     back = cfg.require(REGION_BACK_BUTTON)
@@ -215,6 +217,7 @@ def collect_search_page_rows(
 
     park_cursor_on_back(back)
     frame = grab_screen_rect(market.left, market.top, market.width, market.height)
+    check_stop(run_control)
     rows = parse_page_rows(frame.bgr, page=1, ocr=ocr)
 
     if not rows:

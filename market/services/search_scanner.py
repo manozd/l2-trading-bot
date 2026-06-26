@@ -11,8 +11,8 @@ from market.constants import DEFAULT_PICO_COM
 from market.core.models import ItemRef, SearchResult, SearchRunConfig
 from market.countdown import wait_before_start
 from market.pico_hid import PicoHidSerial
-from market.scanner import collect_search_page_rows
 from market.search import press_back_button, submit_search_query
+from market.search_recovery import detect_search_list_state, recover_to_search_hub
 from market.search_progress import M2_MODE_VERSION, SearchProgressStore, target_config_hash
 from market.services.priority_scan import (
     catalog_scan_phase,
@@ -22,7 +22,7 @@ from market.services.priority_scan import (
     priority_price_snapshot,
 )
 from market.storage.search_sink import SearchResultSink
-from market.run_control import RunControl
+from market.run_control import RunControl, StopRequested, check_stop, sleep_checked
 from market.variant_catalog import VariantCatalog
 
 PROGRESS_NAME = "market_search_progress.json"
@@ -105,34 +105,42 @@ class SearchScanner:
         items = self.load_items()
         done = self._progress.load_done_item_ids() if cfg.resume else set()
         pending = [i for i in items if not self._is_done(i, done)]
+        progress_path = cfg.out_jsonl.parent / PROGRESS_NAME
 
         if not cfg.resume:
+            self._progress.clear()
             self._sink.reset()
+            done = set()
+            pending = items
         elif self._progress.is_legacy_stale():
-            progress_path = cfg.out_jsonl.parent / PROGRESS_NAME
             print(
                 "[search] resume — ignoring stale progress "
                 f"(mode {M2_MODE_VERSION}, config {self._config_hash}). "
                 f"Delete {progress_path.resolve()} to clear the old file.",
                 flush=True,
             )
+            self._progress.clear()
+            done = set()
+            pending = items
+        elif done and not pending:
+            print(
+                f"[search] previous run complete ({len(done)} item(s)) — refreshing all items. "
+                "Resume still applies when a run stops early (F12 mid-scan).",
+                flush=True,
+            )
+            self._progress.clear()
+            done = set()
+            pending = items
         elif done:
-            progress_path = cfg.out_jsonl.parent / PROGRESS_NAME
             print(
                 f"[search] resume ON — {len(done)} checkpoint(s), "
                 f"{len(pending)}/{len(items)} item(s) left "
                 f"(mode {M2_MODE_VERSION}, config {self._config_hash})",
                 flush=True,
             )
-            if not pending:
-                print(
-                    "[search] all items already marked done — nothing to scan. "
-                    f"Delete {progress_path.resolve()} or run with --no-resume.",
-                    flush=True,
-                )
 
         if not cfg.dry_run:
-            wait_before_start(cfg.start_delay_s, tag="search")
+            wait_before_start(cfg.start_delay_s, tag="search", run_control=self._run_control)
 
         pico: PicoHidSerial | None = None
         if not cfg.dry_run:
@@ -159,9 +167,7 @@ class SearchScanner:
 
         try:
             for i, item in enumerate(items, start=1):
-                if self._run_control and self._run_control.should_stop():
-                    print("[search] stopped — finishing after last item", flush=True)
-                    break
+                check_stop(self._run_control)
 
                 if self._is_done(item, done):
                     print(
@@ -180,6 +186,7 @@ class SearchScanner:
                 if not cfg.dry_run:
                     assert pico is not None
                     for qi, query in enumerate(queries):
+                        check_stop(self._run_control)
                         if qi > 0:
                             print(
                                 f"[search] fallback search {query!r} "
@@ -192,15 +199,33 @@ class SearchScanner:
                             pico=pico,
                             settle_s=cfg.search_settle_s,
                             input_mode=cfg.input_mode,
+                            run_control=self._run_control,
                         )
                         raw_rows = collect_search_rows_with_retry(
                             roi_path=cfg.roi_path.resolve(),
                             category=item.category or cfg.category,
                             scanned_at=scanned_at,
+                            run_control=self._run_control,
                         )
                         if raw_rows:
                             used_query = query
                             break
+
+                not_on_market = not raw_rows
+                if not_on_market and not cfg.dry_run:
+                    list_state = detect_search_list_state(roi_path=cfg.roi_path.resolve())
+                    if list_state == "empty_list":
+                        print(
+                            f"[search] not on market — no listings for {item.search_name!r} "
+                            "(empty search results)",
+                            flush=True,
+                        )
+                    else:
+                        print(
+                            f"[search] not on market — no listings for {item.search_name!r} "
+                            f"(list state: {list_state})",
+                            flush=True,
+                        )
 
                 print(f"[search] catalog_scan — {len(raw_rows)} visible variant row(s)", flush=True)
                 catalog_uids = catalog_scan_phase(
@@ -261,13 +286,26 @@ class SearchScanner:
                     done=done,
                 )
 
-                if self._run_control and self._run_control.should_stop():
-                    print("[search] stopped — PAUSED", flush=True)
-                    break
-
                 if not cfg.dry_run and i < len(items):
+                    check_stop(self._run_control)
                     assert pico is not None
-                    press_back_button(back=self._back, pico=pico, settle_s=cfg.back_settle_s)
+                    if not_on_market:
+                        recover_to_search_hub(
+                            back=self._back,
+                            search=self._search,
+                            pico=pico,
+                            back_settle_s=cfg.back_settle_s,
+                            run_control=self._run_control,
+                        )
+                    else:
+                        press_back_button(
+                            back=self._back,
+                            pico=pico,
+                            settle_s=cfg.back_settle_s,
+                            run_control=self._run_control,
+                        )
+        except StopRequested:
+            print("[search] stopped — PAUSED", flush=True)
         finally:
             if pico is not None:
                 pico.close()
@@ -280,6 +318,8 @@ class SearchScanner:
                     f"{cfg.variant_catalog_path.resolve()}",
                     flush=True,
                 )
+            if cfg.resume and all(self._is_done(item, done) for item in items):
+                self._progress.clear()
 
         self._sink.finalize()
         self._sink.print_done()

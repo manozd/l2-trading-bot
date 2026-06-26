@@ -2,6 +2,7 @@
 # Group by category; optional filter: python -m cli search --category currency
 
 currency:
+  - "Recipe: Draconic Bow (60%)"
   - Coin of Luck
   - Ancient Adena
   - Gemstone S

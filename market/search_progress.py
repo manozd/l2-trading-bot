@@ -6,6 +6,7 @@ import hashlib
 import json
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 M2_MODE_VERSION = "m2_catalog_v2"
 
@@ -86,6 +87,25 @@ class SearchProgressStore:
         if data.get("mode_version") != self._mode_version:
             return bool(data.get("completed") or data.get("done"))
         return data.get("target_config_hash") != self._config_hash
+
+    def clear(self) -> None:
+        """Remove progress file (fresh scan on next run)."""
+        if self._path.is_file():
+            self._path.unlink()
+
+    def save_snapshot(self) -> dict[str, Any]:
+        """Return current progress payload for display."""
+        if not self._path.is_file():
+            return {}
+        try:
+            data = json.loads(self._path.read_text(encoding="utf-8"))
+            return data if isinstance(data, dict) else {}
+        except (json.JSONDecodeError, TypeError, AttributeError):
+            return {}
+
+    @property
+    def path(self) -> Path:
+        return self._path
 
     def mark_done(
         self,

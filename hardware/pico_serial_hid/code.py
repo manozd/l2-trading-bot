@@ -8,7 +8,7 @@
 #   L_DOWN / L_UP       — left button press / release (hold + drag: use MOVE between)
 #   MOVE dx dy          — relative move; large deltas are split into HID-sized steps
 #   R_DOWN / R_UP       — right mouse button press / release (camera: hold RMB + MOVE)
-#   KEY NAME            — NAME is F1, F3, F4, ENTER, ESC, TAB, SPACE, MINUS,
+#   KEY NAME            — NAME is F1, F3, F4, ENTER, ESC, TAB, BACKSPACE, DELETE, SPACE, MINUS,
 #                         LPAREN, RPAREN, PERCENT, COLON, APOSTROPHE (case-insensitive),
 #                         or one letter a–z / digit 0–9
 
@@ -31,7 +31,10 @@ _KEY = {
     "ENTER": Keycode.ENTER,
     "RETURN": Keycode.ENTER,
     "ESC": Keycode.ESCAPE,
+    "ESCAPE": Keycode.ESCAPE,
     "TAB": Keycode.TAB,
+    "BACKSPACE": Keycode.BACKSPACE,
+    "DELETE": Keycode.DELETE,
     "SPACE": Keycode.SPACEBAR,
     "SPACEBAR": Keycode.SPACEBAR,
     "MINUS": Keycode.MINUS,
