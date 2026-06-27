@@ -158,7 +158,7 @@ class MarketDaemon:
             self._mode = "bulk"
             print(
                 "[daemon] M+1 bulk crawl — open full market list, then F12 "
-                "(each row → vendor page 1 → back)",
+                "(auto resolve-bulk + trusted-prices after crawl)",
                 flush=True,
             )
             self._print_status()
@@ -284,7 +284,7 @@ class MarketDaemon:
         cat_note = f" category={cat!r}" if cat else ""
         print(
             f"[daemon] M+2 priority monitor — {len(items)} items from {path}{cat_note}, "
-            "then F12 (trusted prices + variant catalog)",
+            "then F12 (auto trusted-prices rollup after scan)",
             flush=True,
         )
 
@@ -366,9 +366,10 @@ class MarketDaemon:
             "    C+1  market window (search / next / back derived automatically)\n"
             "    C+2..4  same as C+1\n"
             "  Mode (while paused):\n"
-            "    M+1  full market bulk crawl (discovery)\n"
-            "    M+2  priority items (target_lists.yaml) — prices + catalog\n"
+            "    M+1  full market bulk crawl (discovery — not user prices)\n"
+            "    M+2  priority items (target_lists.yaml) — M+2 scan + catalog\n"
             "    M+3  craft cost — enter recipe name in dialog\n"
+            "  After M+1/M+2: trusted rollup runs automatically; use: python -m cli prices\n"
             "  F12  start selected mode / stop run gracefully\n"
             "  Ctrl+C  quit\n",
             flush=True,

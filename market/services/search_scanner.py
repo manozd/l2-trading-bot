@@ -23,6 +23,7 @@ from market.services.priority_scan import (
 )
 from market.storage.search_sink import SearchResultSink
 from market.run_control import RunControl, StopRequested, check_stop, sleep_checked
+from market.post_run import run_post_m1_hooks, run_post_m2_hooks
 from market.variant_catalog import VariantCatalog
 
 PROGRESS_NAME = "market_search_progress.json"
@@ -329,6 +330,15 @@ class SearchScanner:
 
         self._sink.finalize()
         self._sink.print_done()
+        if cfg.post_run_rollup and not cfg.dry_run:
+            try:
+                run_post_m2_hooks(
+                    search_prices_path=cfg.out_jsonl,
+                    bulk_resolved_path=cfg.bulk_resolved_jsonl,
+                    catalog_path=cfg.variant_catalog_path,
+                )
+            except Exception as exc:
+                print(f"[post-run] trusted rollup failed: {exc}", flush=True)
         return self._sink.results
 
     @staticmethod

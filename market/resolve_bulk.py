@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -13,6 +14,17 @@ from market.identity_status import TRUSTED_IDENTITY_STATUSES, is_trusted_identit
 from market.variant_catalog import CatalogEntry, VariantCatalog, normalize_display_name
 
 ResolveStatus = str
+
+# Split heuristics for two list labels in one OCR band (ellipsis handled separately).
+_MERGED_NAME_SPLIT = re.compile(
+    r"\s+(?=Recipe:\s)|\s+(?=Sealed\s)|\s+(?=Blessed\s)|"
+    r"\s+(?=Scroll:\s)|\s+(?=Spellbook:\s)|\s+(?=Ancient\s)|\s+(?=Amulet:\s)|"
+    r"\s+(?=Soulshot\s)|\s+(?=Spiritshot\s)|\s+(?=Fish\sStew\s)|"
+    r"\s+(?=Red\sSeal\s)|\s+(?=Blue\sSeal\s)|\s+(?=Green\sSeal\s)|"
+    r"\s+(?=Coal\b)|\s+(?=Mark\s of\s)|\s+(?=Freya)|\s+(?=Mold\s)|"
+    r"\s+(?=Sobekk's\s)|\s+(?=Gemstone\s)|\s+(?=Fabric\b)",
+    re.IGNORECASE,
+)
 
 
 @dataclass
@@ -35,7 +47,6 @@ class _MatchCandidate:
 def _best_name_score(names: list[str], entry: CatalogEntry) -> int:
     targets = [
         entry.display_name,
-        entry.normalized_name,
         entry.search_query or "",
         entry.variant_group or "",
     ]
@@ -52,6 +63,11 @@ def _best_name_score(names: list[str], entry: CatalogEntry) -> int:
     return best
 
 
+def _vendor_name_score(vendor_names: list[str], entry: CatalogEntry) -> int:
+    """Score vendor page OCR against trusted catalog labels (not ``normalized_name``)."""
+    return _best_name_score(vendor_names, entry)
+
+
 def _is_prefix_name_match(name: str, entry: CatalogEntry) -> bool:
     n = normalize_display_name(name)
     for target in (entry.display_name, entry.search_query or "", entry.variant_group or ""):
@@ -64,34 +80,257 @@ def _is_prefix_name_match(name: str, entry: CatalogEntry) -> bool:
     return False
 
 
-def _observation_names(obs: dict[str, Any]) -> list[str]:
-    """
-    Name signals for bulk rows — vendor page OCR first, then list-visible OCR.
-    """
-    ordered: list[str] = []
+def _vendor_name_from_raw(raw: str) -> str | None:
+    head = raw.split(" In stock:", 1)[0].strip()
+    head = head.split(" On market:", 1)[0].strip()
+    return head or None
 
+
+def _vendor_names_from_obs(obs: dict[str, Any]) -> list[str]:
+    ordered: list[str] = []
     for row in obs.get("vendor_rows") or []:
-        raw = str(row.get("raw_text") or "")
-        if not raw:
-            continue
-        head = raw.split(" In stock:", 1)[0].strip()
-        head = head.split(" On market:", 1)[0].strip()
+        head = _vendor_name_from_raw(str(row.get("raw_text") or ""))
         if head:
             ordered.append(head)
+    return _dedupe_names(ordered)
 
-    lc = obs.get("list_context") or {}
-    visible = lc.get("visible_name_ocr")
-    if visible:
-        ordered.append(str(visible))
 
+def _dedupe_names(names: list[str]) -> list[str]:
     out: list[str] = []
     seen: set[str] = set()
-    for name in ordered:
+    for name in names:
         key = normalize_display_name(name)
         if key and key not in seen:
             seen.add(key)
             out.append(name)
     return out
+
+
+def _meaningful_merge_parts(name: str) -> list[str]:
+    parts = [p.strip() for p in _MERGED_NAME_SPLIT.split(name) if p.strip()]
+    return [p for p in parts if len(p) >= 4]
+
+
+def _is_merged_ocr_name(name: str | None) -> bool:
+    if not name:
+        return False
+    text = str(name).strip()
+    if text.lower().count("recipe:") >= 2:
+        return True
+    if "..." in text:
+        _head, _sep, tail = text.partition("...")
+        if tail.strip() and len(tail.strip()) >= 6:
+            return True
+    parts = [p.strip() for p in _MERGED_NAME_SPLIT.split(text) if p.strip()]
+    if len(parts) < 2:
+        return False
+    if len(parts) == 2 and parts[1].startswith(("Spiritshot", "Soulshot")):
+        if parts[0].casefold() in {"blessed", "b"} or parts[0].casefold().endswith("blessed"):
+            return False
+    second_l = parts[1].casefold()
+    new_item_markers = (
+        "red seal",
+        "blue seal",
+        "green seal",
+        "recipe:",
+        "sealed ",
+        "gemstone ",
+        "crystal (",
+        "dark crystal",
+        "black ore ring",
+        "mold ",
+    )
+    return any(second_l.startswith(marker) for marker in new_item_markers)
+
+
+def _list_ocr_unreliable(obs: dict[str, Any], vendor_names: list[str]) -> bool:
+    """True when list-visible OCR is missing, merged, or disagrees with vendor page."""
+    lc = obs.get("list_context") or {}
+    visible = lc.get("visible_name_ocr")
+    if not visible or not str(visible).strip():
+        return True
+    text = str(visible)
+    if _is_merged_ocr_name(text):
+        return True
+    if vendor_names:
+        vendor_key = normalize_display_name(vendor_names[0])
+        visible_key = normalize_display_name(text)
+        if vendor_key and visible_key.startswith(vendor_key):
+            tail = visible_key[len(vendor_key) :].strip()
+            if tail and len(tail) >= 6 and not tail.startswith("+"):
+                return True
+        if vendor_key and visible_key != vendor_key and vendor_key not in visible_key:
+            if _is_merged_ocr_name(text) or len(_meaningful_merge_parts(text)) >= 2:
+                return True
+    return False
+
+
+def _names_for_resolution(
+    vendor_names: list[str],
+    obs: dict[str, Any],
+    *,
+    list_unreliable: bool,
+) -> list[str]:
+    """Names used for icon scoring — vendor first; skip merged list OCR when unreliable."""
+    names = list(vendor_names)
+    if not list_unreliable:
+        lc = obs.get("list_context") or {}
+        visible = lc.get("visible_name_ocr")
+        if visible:
+            names.append(str(visible))
+    return _dedupe_names(names)
+
+
+def _observation_names(obs: dict[str, Any]) -> list[str]:
+    """Name signals for bulk rows — vendor page OCR first, then list-visible OCR."""
+    vendor_names = _vendor_names_from_obs(obs)
+    list_unreliable = _list_ocr_unreliable(obs, vendor_names)
+    return _names_for_resolution(vendor_names, obs, list_unreliable=list_unreliable)
+
+
+def _vendor_supports_entry(vendor_names: list[str], entry: CatalogEntry) -> bool:
+    if not vendor_names:
+        return False
+    if _vendor_name_score(vendor_names, entry) >= _MIN_ACCEPT_SCORE:
+        return True
+    return any(_is_prefix_name_match(n, entry) for n in vendor_names)
+
+
+def _vendor_supported_entries(
+    vendor_names: list[str],
+    catalog: VariantCatalog,
+) -> list[CatalogEntry]:
+    if not vendor_names:
+        return []
+    supported: list[CatalogEntry] = []
+    seen_uids: set[str] = set()
+    for entry in catalog.entries.values():
+        if not _vendor_supports_entry(vendor_names, entry):
+            continue
+        if entry.item_uid in seen_uids:
+            continue
+        seen_uids.add(entry.item_uid)
+        supported.append(entry)
+    return supported
+
+
+def _icon_contradicts_vendor(
+    candidate: _MatchCandidate,
+    vendor_names: list[str],
+    catalog: VariantCatalog,
+) -> bool:
+    """
+    Reject icon guesses that vendor page OCR does not support (P0.3).
+
+    When vendor text clearly matches a different catalog item, or supports none,
+    weak icon-only / fuzzy guesses are dropped.
+    """
+    if not vendor_names:
+        return False
+    if _vendor_supports_entry(vendor_names, candidate.entry):
+        return False
+
+    supported = _vendor_supported_entries(vendor_names, catalog)
+    if supported:
+        supported_uids = {e.item_uid for e in supported}
+        return candidate.entry.item_uid not in supported_uids
+
+    status = _status_from_candidate(candidate)
+    vendor_score = _vendor_name_score(vendor_names, candidate.entry)
+    if vendor_score < _MIN_ACCEPT_SCORE and not any(
+        _is_prefix_name_match(n, candidate.entry) for n in vendor_names
+    ):
+        if status in {"fuzzy_icon_candidate", "icon_only_candidate", "search_confirmed"}:
+            return True
+        if candidate.name_score < _MIN_ACCEPT_SCORE and not candidate.prefix_name:
+            return True
+    return False
+
+
+def _make_name_candidate(
+    entry: CatalogEntry,
+    *,
+    name_score: int,
+    prefix: bool,
+) -> _MatchCandidate:
+    return _MatchCandidate(
+        entry=entry,
+        name_score=name_score,
+        icon_distance=None,
+        exact_icon=False,
+        prefix_name=prefix,
+    )
+
+
+def _collect_name_only_candidates(
+    names: list[str],
+    catalog: VariantCatalog,
+    *,
+    vendor_only: bool = False,
+) -> list[_MatchCandidate]:
+    if not names:
+        return []
+    scored: list[_MatchCandidate] = []
+    for entry in catalog.entries.values():
+        name_score = (
+            _vendor_name_score(names, entry)
+            if vendor_only
+            else _best_name_score(names, entry)
+        )
+        prefix = any(_is_prefix_name_match(n, entry) for n in names)
+        if name_score >= _MIN_ACCEPT_SCORE or prefix:
+            scored.append(
+                _make_name_candidate(entry, name_score=name_score, prefix=prefix)
+            )
+    return scored
+
+
+def _collect_icon_candidates(
+    obs: dict[str, Any],
+    catalog: VariantCatalog,
+    match_names: list[str],
+) -> list[_MatchCandidate]:
+    lc = obs.get("list_context") or {}
+    icon_hash = lc.get("icon_hash")
+    candidates: list[_MatchCandidate] = []
+
+    if not icon_hash:
+        return candidates
+
+    for entry in catalog.find_by_icon(icon_hash):
+        name_score = _best_name_score(match_names, entry)
+        prefix = any(_is_prefix_name_match(n, entry) for n in match_names)
+        candidates.append(
+            _MatchCandidate(
+                entry=entry,
+                name_score=name_score,
+                icon_distance=0,
+                exact_icon=True,
+                prefix_name=prefix,
+            )
+        )
+
+    for entry, dist in catalog.fuzzy_icon_candidates(icon_hash):
+        if any(c.entry.item_uid == entry.item_uid for c in candidates):
+            continue
+        name_score = _best_name_score(match_names, entry)
+        if name_score < _MIN_ACCEPT_SCORE and not any(
+            _is_prefix_name_match(n, entry) for n in match_names
+        ):
+            if dist > FUZZY_STRONG_MAX:
+                continue
+        prefix = any(_is_prefix_name_match(n, entry) for n in match_names)
+        candidates.append(
+            _MatchCandidate(
+                entry=entry,
+                name_score=name_score,
+                icon_distance=dist,
+                exact_icon=False,
+                prefix_name=prefix,
+            )
+        )
+
+    return candidates
 
 
 def _status_from_candidate(c: _MatchCandidate) -> ResolveStatus:
@@ -126,67 +365,83 @@ def _trusted_status(status: ResolveStatus, candidate_count: int) -> bool:
     return candidate_count == 1 and is_trusted_identity(status)
 
 
+def apply_resolved_identity(
+    identity: dict[str, Any],
+    *,
+    status: ResolveStatus,
+    entry: CatalogEntry | None,
+    possible_uids: list[str],
+    icon_distance: int | None = None,
+) -> dict[str, Any]:
+    """
+    Write bulk resolver fields onto ``identity``.
+
+    Untrusted statuses never receive final ``item_uid`` / catalog labels — only
+    ``possible_item_uids`` and ``trusted: false``.
+    """
+    trusted = is_trusted_identity(status)
+    identity["status"] = status
+    identity["possible_item_uids"] = possible_uids
+    identity["trusted"] = trusted
+    identity["source"] = "bulk_resolver"
+
+    if icon_distance is not None:
+        identity["icon_distance"] = icon_distance
+    else:
+        identity.pop("icon_distance", None)
+
+    for key in ("catalog_search_query", "canonical_icon_hash", "guessed_item_uid"):
+        identity.pop(key, None)
+
+    if trusted and entry is not None:
+        identity["item_uid"] = entry.item_uid
+        identity["item_id"] = entry.variant_group
+        identity["item_name"] = entry.display_name
+        identity["catalog_search_query"] = entry.search_query
+        identity["canonical_icon_hash"] = entry.icon_hash
+    else:
+        identity["item_uid"] = None
+        identity["item_id"] = None
+        identity["item_name"] = None
+
+    return identity
+
+
 def _collect_candidates(
     obs: dict[str, Any],
     catalog: VariantCatalog,
 ) -> list[_MatchCandidate]:
-    lc = obs.get("list_context") or {}
-    icon_hash = lc.get("icon_hash")
-    names = _observation_names(obs)
-    candidates: list[_MatchCandidate] = []
+    vendor_names = _vendor_names_from_obs(obs)
+    list_unreliable = _list_ocr_unreliable(obs, vendor_names)
+    match_names = _names_for_resolution(
+        vendor_names,
+        obs,
+        list_unreliable=list_unreliable,
+    )
 
-    if icon_hash:
-        for entry in catalog.find_by_icon(icon_hash):
-            name_score = _best_name_score(names, entry)
-            prefix = any(_is_prefix_name_match(n, entry) for n in names)
-            candidates.append(
-                _MatchCandidate(
-                    entry=entry,
-                    name_score=name_score,
-                    icon_distance=0,
-                    exact_icon=True,
-                    prefix_name=prefix,
-                )
-            )
+    # P0.2 — when list OCR failed or merged, resolve from vendor page text first.
+    if list_unreliable and vendor_names:
+        name_only = _collect_name_only_candidates(
+            vendor_names,
+            catalog,
+            vendor_only=True,
+        )
+        if name_only:
+            return name_only
 
-        for entry, dist in catalog.fuzzy_icon_candidates(icon_hash):
-            if any(c.entry.item_uid == entry.item_uid for c in candidates):
-                continue
-            name_score = _best_name_score(names, entry)
-            if name_score < _MIN_ACCEPT_SCORE and not any(
-                _is_prefix_name_match(n, entry) for n in names
-            ):
-                if dist > FUZZY_STRONG_MAX:
-                    continue
-            prefix = any(_is_prefix_name_match(n, entry) for n in names)
-            candidates.append(
-                _MatchCandidate(
-                    entry=entry,
-                    name_score=name_score,
-                    icon_distance=dist,
-                    exact_icon=False,
-                    prefix_name=prefix,
-                )
-            )
+    candidates = _collect_icon_candidates(obs, catalog, match_names)
 
-    if not candidates and names:
-        scored: list[tuple[CatalogEntry, int, bool]] = []
-        for entry in catalog.entries.values():
-            name_score = _best_name_score(names, entry)
-            prefix = any(_is_prefix_name_match(n, entry) for n in names)
-            if name_score >= _MIN_ACCEPT_SCORE or prefix:
-                scored.append((entry, name_score, prefix))
-        if len(scored) == 1:
-            entry, name_score, prefix = scored[0]
-            candidates.append(
-                _MatchCandidate(
-                    entry=entry,
-                    name_score=name_score,
-                    icon_distance=None,
-                    exact_icon=False,
-                    prefix_name=prefix,
-                )
-            )
+    if vendor_names:
+        candidates = [
+            c
+            for c in candidates
+            if not _icon_contradicts_vendor(c, vendor_names, catalog)
+        ]
+
+    if not candidates and match_names:
+        name_only = _collect_name_only_candidates(match_names, catalog)
+        if len(name_only) == 1:
+            candidates = name_only
 
     return candidates
 
@@ -284,23 +539,13 @@ def resolve_bulk_observations(
 
         out = dict(obs)
         identity = dict(out.get("identity") or {})
-        identity["status"] = status
-        identity["possible_item_uids"] = possible_uids
-        identity["source"] = "bulk_resolver"
-        if icon_distance is not None:
-            identity["icon_distance"] = icon_distance
-
-        if entry is not None:
-            identity["item_uid"] = entry.item_uid
-            identity["item_id"] = entry.variant_group
-            identity["item_name"] = entry.display_name
-            identity["catalog_search_query"] = entry.search_query
-            identity["canonical_icon_hash"] = entry.icon_hash
-        else:
-            identity["item_uid"] = None
-            identity["item_id"] = None
-            identity["item_name"] = None
-
+        apply_resolved_identity(
+            identity,
+            status=status,
+            entry=entry,
+            possible_uids=possible_uids,
+            icon_distance=icon_distance,
+        )
         out["identity"] = identity
         resolved.append(out)
 

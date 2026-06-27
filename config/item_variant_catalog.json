@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updated_at": "2026-06-26T18:15:33.590823+00:00",
+  "updated_at": "2026-06-27T10:35:15.298176+00:00",
   "entries": {
     "ancient_adena": {
       "item_uid": "ancient_adena",
@@ -13,7 +13,7 @@
       "source": "search_confirmed",
       "disambiguation": null,
       "first_seen_at": "2026-06-26T07:11:26.766575+00:00",
-      "last_seen_at": "2026-06-26T18:14:17.455829+00:00",
+      "last_seen_at": "2026-06-27T10:33:57.140183+00:00",
       "icon_aliases": [
         {
           "icon_hash": "2975c3e5f9e51fe5f7e5b3e593e535e594e531e56de55de59b659fe512752015:111",
@@ -238,6 +238,22 @@
           "last_seen_at": "2026-06-26T18:14:17.455829+00:00",
           "match_method": "search_confirmed",
           "distance_to_canonical": 77
+        },
+        {
+          "icon_hash": "85f1d9f13df14ff15bf159f15bf156f150f1a1f1acf15ff18ff18ef120110011:111",
+          "source": "search_confirmed",
+          "first_seen_at": "2026-06-27T05:33:06.831992+00:00",
+          "last_seen_at": "2026-06-27T05:33:06.831992+00:00",
+          "match_method": "search_confirmed",
+          "distance_to_canonical": 25
+        },
+        {
+          "icon_hash": "d1f17df14ff35bf159f15bf158f154f131f1adf14ff15ff18ff11ab100110021:112",
+          "source": "search_confirmed",
+          "first_seen_at": "2026-06-27T10:33:57.140183+00:00",
+          "last_seen_at": "2026-06-27T10:33:57.140183+00:00",
+          "match_method": "search_confirmed",
+          "distance_to_canonical": 16
         }
       ]
     },
@@ -252,7 +268,7 @@
       "source": "search_confirmed",
       "disambiguation": null,
       "first_seen_at": "2026-06-26T07:11:26.766575+00:00",
-      "last_seen_at": "2026-06-26T18:14:17.455829+00:00",
+      "last_seen_at": "2026-06-27T10:33:57.140183+00:00",
       "icon_aliases": [
         {
           "icon_hash": "7be567e59be535e5bbe593e532e597e537e5afe57fe5f7e50be5105500150005:111",
@@ -365,6 +381,22 @@
           "last_seen_at": "2026-06-26T18:14:17.455829+00:00",
           "match_method": "search_confirmed",
           "distance_to_canonical": 78
+        },
+        {
+          "icon_hash": "e9f12ff177f1c9f11af159f159715b7152f137f17ef13ff1f3f10df110110011:111",
+          "source": "search_confirmed",
+          "first_seen_at": "2026-06-27T05:33:06.831992+00:00",
+          "last_seen_at": "2026-06-27T05:33:06.831992+00:00",
+          "match_method": "search_confirmed",
+          "distance_to_canonical": 23
+        },
+        {
+          "icon_hash": "2ff177f1cdf31af15bf159715b7152f116f137f13df1bbf1cbf10ab100110021:111",
+          "source": "search_confirmed",
+          "first_seen_at": "2026-06-27T10:33:57.140183+00:00",
+          "last_seen_at": "2026-06-27T10:33:57.140183+00:00",
+          "match_method": "search_confirmed",
+          "distance_to_canonical": 25
         }
       ]
     },
@@ -420,6 +452,19 @@
       "first_seen_at": "2026-06-26T15:24:06.110346+00:00",
       "last_seen_at": "2026-06-26T16:22:38.148639+00:00"
     },
+    "draconic_bow__icon_1110252311147308": {
+      "item_uid": "draconic_bow__icon_1110252311147308",
+      "display_name": "Draconic Bow Focus +0",
+      "normalized_name": "draconic bow focus +0",
+      "icon_hash": "1110252311147308f1b6b1433159715af159f158f151f139712f713ff1cff1:111",
+      "category": "olympiad",
+      "variant_group": "draconic_bow",
+      "search_query": "Draconic Bow",
+      "source": "search_confirmed",
+      "disambiguation": null,
+      "first_seen_at": "2026-06-27T05:33:06.831992+00:00",
+      "last_seen_at": "2026-06-27T05:33:44.752404+00:00"
+    },
     "draconic_bow__icon_115849519e5a5655": {
       "item_uid": "draconic_bow__icon_115849519e5a5655",
       "display_name": "Draconic Bow Focus",
@@ -432,6 +477,19 @@
       "disambiguation": null,
       "first_seen_at": "2026-06-26T07:05:45.456140+00:00",
       "last_seen_at": "2026-06-26T07:06:17.421550+00:00"
+    },
+    "draconic_bow__icon_1160f19e7185f181": {
+      "item_uid": "draconic_bow__icon_1160f19e7185f181",
+      "display_name": "Recipe: Draconic Bow (6",
+      "normalized_name": "recipe: draconic bow (6",
+      "icon_hash": "1160f19e7185f181f159f15bf15bf15371537133f16b71b2f106f1e9f10211:111",
+      "category": "olympiad",
+      "variant_group": "draconic_bow",
+      "search_query": "Draconic Bow",
+      "source": "search_confirmed",
+      "disambiguation": null,
+      "first_seen_at": "2026-06-27T05:33:06.831992+00:00",
+      "last_seen_at": "2026-06-27T05:33:06.831992+00:00"
     },
     "draconic_bow__icon_18f18cb1b6b14931": {
       "item_uid": "draconic_bow__icon_18f18cb1b6b14931",
@@ -523,6 +581,19 @@
       "disambiguation": null,
       "first_seen_at": "2026-06-26T07:11:26.766575+00:00",
       "last_seen_at": "2026-06-26T07:11:58.666287+00:00"
+    },
+    "draconic_bow__icon_2b1154f1c8b196f1": {
+      "item_uid": "draconic_bow__icon_2b1154f1c8b196f1",
+      "display_name": "Draconic Bow - Destruct +0",
+      "normalized_name": "draconic bow - destruct +0",
+      "icon_hash": "2b1154f1c8b196f1037319735bf159f15cf156f37e7363713df18ff1e3f1cdf1:111",
+      "category": "olympiad",
+      "variant_group": "draconic_bow",
+      "search_query": "Draconic Bow",
+      "source": "search_confirmed",
+      "disambiguation": null,
+      "first_seen_at": "2026-06-27T10:33:57.140183+00:00",
+      "last_seen_at": "2026-06-27T10:34:35.856543+00:00"
     },
     "draconic_bow__icon_410d1035271158f1": {
       "item_uid": "draconic_bow__icon_410d1035271158f1",
@@ -618,7 +689,7 @@
       "source": "search_confirmed",
       "disambiguation": null,
       "first_seen_at": "2026-06-26T14:13:32.459038+00:00",
-      "last_seen_at": "2026-06-26T14:14:04.646270+00:00"
+      "last_seen_at": "2026-06-27T10:33:57.140183+00:00"
     },
     "draconic_bow__icon_6fb178f1e9f15bf1": {
       "item_uid": "draconic_bow__icon_6fb178f1e9f15bf1",
@@ -633,6 +704,19 @@
       "first_seen_at": "2026-06-26T15:16:40.732700+00:00",
       "last_seen_at": "2026-06-26T15:16:44.117607+00:00"
     },
+    "draconic_bow__icon_6fb178f1e9f35bf1": {
+      "item_uid": "draconic_bow__icon_6fb178f1e9f35bf1",
+      "display_name": "Draconic Bow Shaft",
+      "normalized_name": "draconic bow shaft",
+      "icon_hash": "6fb178f1e9f35bf15af15bf159f156f136f1a8f15bf1b3f1b9f1cab100110021:111",
+      "category": "olympiad",
+      "variant_group": "draconic_bow",
+      "search_query": "Draconic Bow",
+      "source": "search_confirmed",
+      "disambiguation": null,
+      "first_seen_at": "2026-06-27T10:33:57.140183+00:00",
+      "last_seen_at": "2026-06-27T10:34:35.856188+00:00"
+    },
     "draconic_bow__icon_6fb378f3e9f15bf3": {
       "item_uid": "draconic_bow__icon_6fb378f3e9f15bf3",
       "display_name": "Draconic Bow Shaft",
@@ -645,6 +729,19 @@
       "disambiguation": null,
       "first_seen_at": "2026-06-26T14:23:48.193117+00:00",
       "last_seen_at": "2026-06-26T14:25:01.457164+00:00"
+    },
+    "draconic_bow__icon_800510090025a311": {
+      "item_uid": "draconic_bow__icon_800510090025a311",
+      "display_name": "Draconic Bow - Destruct... /+0 +0",
+      "normalized_name": "draconic bow - destruct... /+0 +0",
+      "icon_hash": "800510090025a31150f1c8b196f1017119f15bf159b15cf156f1367163713df1:111",
+      "category": "olympiad",
+      "variant_group": "draconic_bow",
+      "search_query": "Draconic Bow",
+      "source": "search_confirmed",
+      "disambiguation": null,
+      "first_seen_at": "2026-06-27T05:33:06.831992+00:00",
+      "last_seen_at": "2026-06-27T05:33:44.752470+00:00"
     },
     "draconic_bow__icon_8050111907148b18": {
       "item_uid": "draconic_bow__icon_8050111907148b18",
@@ -698,6 +795,19 @@
       "first_seen_at": "2026-06-26T07:15:18.869572+00:00",
       "last_seen_at": "2026-06-26T07:15:50.543548+00:00"
     },
+    "draconic_bow__icon_850111947108f1b4": {
+      "item_uid": "draconic_bow__icon_850111947108f1b4",
+      "display_name": "Draconic Bow Critical S",
+      "normalized_name": "draconic bow critical s",
+      "icon_hash": "850111947108f1b4b1423159715af159f158f351f171712f713ff1dff1a7d3:111",
+      "category": "olympiad",
+      "variant_group": "draconic_bow",
+      "search_query": "Draconic Bow",
+      "source": "search_confirmed",
+      "disambiguation": null,
+      "first_seen_at": "2026-06-27T05:33:06.831992+00:00",
+      "last_seen_at": "2026-06-27T05:33:44.752338+00:00"
+    },
     "draconic_bow__icon_907108f1b4b14231": {
       "item_uid": "draconic_bow__icon_907108f1b4b14231",
       "display_name": "Draconic Bow Focus",
@@ -709,7 +819,7 @@
       "source": "search_confirmed",
       "disambiguation": null,
       "first_seen_at": "2026-06-26T14:13:32.459038+00:00",
-      "last_seen_at": "2026-06-26T14:14:04.646336+00:00"
+      "last_seen_at": "2026-06-27T10:33:57.140183+00:00"
     },
     "draconic_bow__icon_90f148b184b1a271": {
       "item_uid": "draconic_bow__icon_90f148b184b1a271",
@@ -723,6 +833,19 @@
       "disambiguation": null,
       "first_seen_at": "2026-06-26T14:23:48.193117+00:00",
       "last_seen_at": "2026-06-26T15:16:40.732700+00:00"
+    },
+    "draconic_bow__icon_91b45358f184b1b2": {
+      "item_uid": "draconic_bow__icon_91b45358f184b1b2",
+      "display_name": "Draconic Bow +0",
+      "normalized_name": "draconic bow +0",
+      "icon_hash": "91b45358f184b1b27109735bf159f15cf156f15ef132713ff19ff1e3f1cdf1:111",
+      "category": "olympiad",
+      "variant_group": "draconic_bow",
+      "search_query": "Draconic Bow",
+      "source": "search_confirmed",
+      "disambiguation": null,
+      "first_seen_at": "2026-06-27T05:33:06.831992+00:00",
+      "last_seen_at": "2026-06-27T05:33:44.752271+00:00"
     },
     "draconic_bow__icon_91c45108f1a4b392": {
       "item_uid": "draconic_bow__icon_91c45108f1a4b392",
@@ -802,6 +925,19 @@
       "first_seen_at": "2026-06-26T07:11:26.766575+00:00",
       "last_seen_at": "2026-06-26T07:11:58.666296+00:00"
     },
+    "draconic_bow__icon_a71118f184b1b6b1": {
+      "item_uid": "draconic_bow__icon_a71118f184b1b6b1",
+      "display_name": "Draconic Bow Focus",
+      "normalized_name": "draconic bow focus",
+      "icon_hash": "a71118f184b1b6b149715a7159f159f15af151f13b712ff19ff1cff183d1a251:111",
+      "category": "olympiad",
+      "variant_group": "draconic_bow",
+      "search_query": "Draconic Bow",
+      "source": "search_confirmed",
+      "disambiguation": null,
+      "first_seen_at": "2026-06-27T10:33:57.140183+00:00",
+      "last_seen_at": "2026-06-27T10:34:35.856463+00:00"
+    },
     "draconic_bow__icon_a75158f18cb3b671": {
       "item_uid": "draconic_bow__icon_a75158f18cb3b671",
       "display_name": "Draconic Bow",
@@ -865,7 +1001,7 @@
       "source": "search_confirmed",
       "disambiguation": null,
       "first_seen_at": "2026-06-26T15:33:01.841937+00:00",
-      "last_seen_at": "2026-06-26T15:33:16.793315+00:00"
+      "last_seen_at": "2026-06-27T05:33:06.831992+00:00"
     },
     "draconic_bow__icon_df65d8e5c9e57365": {
       "item_uid": "draconic_bow__icon_df65d8e5c9e57365",
@@ -983,6 +1119,19 @@
       "disambiguation": null,
       "first_seen_at": "2026-06-26T15:33:01.841937+00:00",
       "last_seen_at": "2026-06-26T15:33:24.441667+00:00"
+    },
+    "draconic_leather_armor__icon_1011e11367b121f1": {
+      "item_uid": "draconic_leather_armor__icon_1011e11367b121f1",
+      "display_name": "Sealed Draconic Leather",
+      "normalized_name": "sealed draconic leather",
+      "icon_hash": "1011e11367b121f121f169f359f159f15df154f159f13df149f153f1d7f13df1:111",
+      "category": "olympiad",
+      "variant_group": "draconic_leather_armor",
+      "search_query": "Draconic Leather Armor",
+      "source": "search_confirmed",
+      "disambiguation": null,
+      "first_seen_at": "2026-06-27T05:33:06.831992+00:00",
+      "last_seen_at": "2026-06-27T05:33:52.334377+00:00"
     },
     "draconic_leather_armor__icon_1011e7b123f121f1": {
       "item_uid": "draconic_leather_armor__icon_1011e7b123f121f1",
@@ -1163,6 +1312,19 @@
       "first_seen_at": "2026-06-26T15:16:40.732700+00:00",
       "last_seen_at": "2026-06-26T15:16:52.706013+00:00"
     },
+    "draconic_leather_armor__icon_2ff1ddf1d2f33bf1": {
+      "item_uid": "draconic_leather_armor__icon_2ff1ddf1d2f33bf1",
+      "display_name": "Sealed Draconic Leather",
+      "normalized_name": "sealed draconic leather",
+      "icon_hash": "2ff1ddf1d2f33bf159f15bf15df156f135f1a3f197f1c3f1faf155b100110021:111",
+      "category": "olympiad",
+      "variant_group": "draconic_leather_armor",
+      "search_query": "Draconic Leather Armor",
+      "source": "search_confirmed",
+      "disambiguation": null,
+      "first_seen_at": "2026-06-27T10:33:57.140183+00:00",
+      "last_seen_at": "2026-06-27T10:34:43.502856+00:00"
+    },
     "draconic_leather_armor__icon_2ff3ddf3d2f13bf3": {
       "item_uid": "draconic_leather_armor__icon_2ff3ddf3d2f13bf3",
       "display_name": "Sealed Draconic Leather",
@@ -1294,7 +1456,7 @@
       "source": "search_confirmed",
       "disambiguation": null,
       "first_seen_at": "2026-06-26T15:33:01.841937+00:00",
-      "last_seen_at": "2026-06-26T15:33:24.441502+00:00"
+      "last_seen_at": "2026-06-27T05:33:06.831992+00:00"
     },
     "draconic_leather_armor__icon_5fe58be5d5e577e5": {
       "item_uid": "draconic_leather_armor__icon_5fe58be5d5e577e5",
@@ -1359,7 +1521,7 @@
       "source": "search_confirmed",
       "disambiguation": null,
       "first_seen_at": "2026-06-26T14:23:48.193117+00:00",
-      "last_seen_at": "2026-06-26T15:16:40.732700+00:00"
+      "last_seen_at": "2026-06-27T10:33:57.140183+00:00"
     },
     "draconic_leather_armor__icon_67f131f121f1a9f1": {
       "item_uid": "draconic_leather_armor__icon_67f131f121f1a9f1",
@@ -1372,7 +1534,7 @@
       "source": "search_confirmed",
       "disambiguation": null,
       "first_seen_at": "2026-06-26T15:16:40.732700+00:00",
-      "last_seen_at": "2026-06-26T15:16:52.706120+00:00"
+      "last_seen_at": "2026-06-27T10:33:57.140183+00:00"
     },
     "draconic_leather_armor__icon_67f131f121f3a9f1": {
       "item_uid": "draconic_leather_armor__icon_67f131f121f3a9f1",
@@ -1438,6 +1600,19 @@
       "disambiguation": null,
       "first_seen_at": "2026-06-26T13:58:27.579366+00:00",
       "last_seen_at": "2026-06-26T13:58:27.579366+00:00"
+    },
+    "draconic_leather_armor__icon_8450011d1312ef12": {
+      "item_uid": "draconic_leather_armor__icon_8450011d1312ef12",
+      "display_name": "Draconic Leather Armor +0",
+      "normalized_name": "draconic leather armor +0",
+      "icon_hash": "8450011d1312ef121f121f16bf15bf15bf159f351f139f17df14b715bf1d5f3:111",
+      "category": "olympiad",
+      "variant_group": "draconic_leather_armor",
+      "search_query": "Draconic Leather Armor",
+      "source": "search_confirmed",
+      "disambiguation": null,
+      "first_seen_at": "2026-06-27T05:33:06.831992+00:00",
+      "last_seen_at": "2026-06-27T05:33:52.334454+00:00"
     },
     "draconic_leather_armor__icon_84755fe589e5d7e5": {
       "item_uid": "draconic_leather_armor__icon_84755fe589e5d7e5",
@@ -1510,7 +1685,7 @@
       "source": "search_confirmed",
       "disambiguation": null,
       "first_seen_at": "2026-06-26T14:23:48.193117+00:00",
-      "last_seen_at": "2026-06-26T15:16:40.732700+00:00"
+      "last_seen_at": "2026-06-27T10:33:57.140183+00:00"
     },
     "draconic_leather_armor__icon_c1e33ee203e323e3": {
       "item_uid": "draconic_leather_armor__icon_c1e33ee203e323e3",
@@ -1575,7 +1750,7 @@
       "source": "search_confirmed",
       "disambiguation": null,
       "first_seen_at": "2026-06-26T07:11:26.766575+00:00",
-      "last_seen_at": "2026-06-26T18:14:17.455829+00:00",
+      "last_seen_at": "2026-06-27T10:33:57.140183+00:00",
       "icon_aliases": [
         {
           "icon_hash": "15000500052011c0e5f8e52de5c3e5336597e5bfe59365b7e56ee596e536e5:111",
@@ -1656,6 +1831,14 @@
           "last_seen_at": "2026-06-26T18:14:17.455829+00:00",
           "match_method": "search_confirmed",
           "distance_to_canonical": 71
+        },
+        {
+          "icon_hash": "1f13ff1e7f33bf159f159f159f15df13df1a1f157f19bf17bf14ab100110021:111",
+          "source": "search_confirmed",
+          "first_seen_at": "2026-06-27T10:33:57.140183+00:00",
+          "last_seen_at": "2026-06-27T10:33:57.140183+00:00",
+          "match_method": "search_confirmed",
+          "distance_to_canonical": 24
         }
       ]
     },
@@ -1670,7 +1853,7 @@
       "source": "search_confirmed",
       "disambiguation": null,
       "first_seen_at": "2026-06-26T07:11:26.766575+00:00",
-      "last_seen_at": "2026-06-26T18:14:17.455829+00:00",
+      "last_seen_at": "2026-06-27T10:33:57.140183+00:00",
       "icon_aliases": [
         {
           "icon_hash": "47e53de51fe53fe5bbe595e535e58fe59fe54fe51fe53ee57be5cf7500150005:111",
@@ -1743,6 +1926,14 @@
           "last_seen_at": "2026-06-26T18:14:17.455829+00:00",
           "match_method": "search_confirmed",
           "distance_to_canonical": 61
+        },
+        {
+          "icon_hash": "3f11ff10ff33bf159f15cf15df14ff14ff10ff11ff11ef17bf166b100110021:111",
+          "source": "search_confirmed",
+          "first_seen_at": "2026-06-27T10:33:57.140183+00:00",
+          "last_seen_at": "2026-06-27T10:33:57.140183+00:00",
+          "match_method": "search_confirmed",
+          "distance_to_canonical": 19
         }
       ]
     },
@@ -1771,6 +1962,19 @@
       "disambiguation": null,
       "first_seen_at": "2026-06-26T15:33:01.841937+00:00",
       "last_seen_at": "2026-06-26T15:33:35.890636+00:00"
+    },
+    "giant_s_codex__icon_11001389f1e9f1ff": {
+      "item_uid": "giant_s_codex__icon_11001389f1e9f1ff",
+      "display_name": "Giant's Codex - Mastery",
+      "normalized_name": "giant's codex - mastery",
+      "icon_hash": "11001389f1e9f1fff1bff358f15bf158f152f15b7132f1d2f151f163f19df1:111",
+      "category": "profit",
+      "variant_group": "giant_s_codex",
+      "search_query": "Giant's Codex",
+      "source": "search_confirmed",
+      "disambiguation": null,
+      "first_seen_at": "2026-06-27T05:33:06.831992+00:00",
+      "last_seen_at": "2026-06-27T05:34:03.577725+00:00"
     },
     "giant_s_codex__icon_13e3e3e2ffe37fe3": {
       "item_uid": "giant_s_codex__icon_13e3e3e2ffe37fe3",
@@ -1822,7 +2026,7 @@
       "source": "search_confirmed",
       "disambiguation": null,
       "first_seen_at": "2026-06-26T15:16:40.732700+00:00",
-      "last_seen_at": "2026-06-26T15:17:04.725092+00:00"
+      "last_seen_at": "2026-06-27T10:33:57.140183+00:00"
     },
     "giant_s_codex__icon_1f95e3957c559f15": {
       "item_uid": "giant_s_codex__icon_1f95e3957c559f15",
@@ -1862,6 +2066,19 @@
       "disambiguation": null,
       "first_seen_at": "2026-06-26T18:14:17.455829+00:00",
       "last_seen_at": "2026-06-26T18:15:13.247548+00:00"
+    },
+    "giant_s_codex__icon_21101b1e1f17df1b": {
+      "item_uid": "giant_s_codex__icon_21101b1e1f17df1b",
+      "display_name": "Giant's Codex - Discipl",
+      "normalized_name": "giant's codex - discipl",
+      "icon_hash": "21101b1e1f17df1b7f159f15af159f152f15b7133f1d2f151f163f1bff14011:111",
+      "category": "profit",
+      "variant_group": "giant_s_codex",
+      "search_query": "Giant's Codex",
+      "source": "search_confirmed",
+      "disambiguation": null,
+      "first_seen_at": "2026-06-27T05:33:06.831992+00:00",
+      "last_seen_at": "2026-06-27T05:34:03.577619+00:00"
     },
     "giant_s_codex__icon_21101b1e1f37df1b": {
       "item_uid": "giant_s_codex__icon_21101b1e1f37df1b",
@@ -2009,7 +2226,7 @@
       "source": "search_confirmed",
       "disambiguation": null,
       "first_seen_at": "2026-06-26T15:16:40.732700+00:00",
-      "last_seen_at": "2026-06-26T15:17:04.725029+00:00"
+      "last_seen_at": "2026-06-27T10:33:57.140183+00:00"
     },
     "giant_s_codex__icon_8bd1e1517e51df91": {
       "item_uid": "giant_s_codex__icon_8bd1e1517e51df91",
@@ -2102,6 +2319,19 @@
       "first_seen_at": "2026-06-26T15:16:40.732700+00:00",
       "last_seen_at": "2026-06-26T15:17:04.724950+00:00"
     },
+    "giant_s_codex__icon_c5f179f18ff31bf1": {
+      "item_uid": "giant_s_codex__icon_c5f179f18ff31bf1",
+      "display_name": "Giant's Codex",
+      "normalized_name": "giant's codex",
+      "icon_hash": "c5f179f18ff31bf15af159715b7152f131b187712df19bf1d7f16ab100110021:111",
+      "category": "profit",
+      "variant_group": "giant_s_codex",
+      "search_query": "Giant's Codex",
+      "source": "search_confirmed",
+      "disambiguation": null,
+      "first_seen_at": "2026-06-27T10:33:57.140183+00:00",
+      "last_seen_at": "2026-06-27T10:34:54.863622+00:00"
+    },
     "giant_s_codex__icon_ef1c5f179f18ff11": {
       "item_uid": "giant_s_codex__icon_ef1c5f179f18ff11",
       "display_name": "Giant's Codex",
@@ -2113,7 +2343,7 @@
       "source": "search_confirmed",
       "disambiguation": null,
       "first_seen_at": "2026-06-26T15:33:01.841937+00:00",
-      "last_seen_at": "2026-06-26T15:33:35.890443+00:00"
+      "last_seen_at": "2026-06-27T05:33:06.831992+00:00"
     },
     "giant_s_codex__icon_fe3f3e39fe337e2b": {
       "item_uid": "giant_s_codex__icon_fe3f3e39fe337e2b",
@@ -2188,7 +2418,7 @@
       "source": "search_confirmed",
       "disambiguation": null,
       "first_seen_at": "2026-06-26T15:33:01.841937+00:00",
-      "last_seen_at": "2026-06-26T15:33:46.025582+00:00"
+      "last_seen_at": "2026-06-27T05:33:06.831992+00:00"
     },
     "giant_s_codex_mastery__icon_8151e811fe11f391": {
       "item_uid": "giant_s_codex_mastery__icon_8151e811fe11f391",
@@ -2281,6 +2511,19 @@
       "first_seen_at": "2026-06-26T15:16:40.732700+00:00",
       "last_seen_at": "2026-06-26T15:17:15.265682+00:00"
     },
+    "giant_s_codex_mastery__icon_c1f1f9f1a7f33bf1": {
+      "item_uid": "giant_s_codex_mastery__icon_c1f1f9f1a7f33bf1",
+      "display_name": "Giant's Codex - Mastery",
+      "normalized_name": "giant's codex - mastery",
+      "icon_hash": "c1f1f9f1a7f33bf15af15bb158f152f13b71b2f150f163f16ff19ab100110021:111",
+      "category": "profit",
+      "variant_group": "giant_s_codex_mastery",
+      "search_query": "Giant's Codex - Mastery",
+      "source": "search_confirmed",
+      "disambiguation": null,
+      "first_seen_at": "2026-06-27T10:33:57.140183+00:00",
+      "last_seen_at": "2026-06-27T10:35:05.094007+00:00"
+    },
     "imperial_crusader_breastplate__icon_10150975d8e58fe5": {
       "item_uid": "imperial_crusader_breastplate__icon_10150975d8e58fe5",
       "display_name": "Recipe: Sealed Imperial",
@@ -2333,6 +2576,19 @@
       "first_seen_at": "2026-06-26T15:33:01.841937+00:00",
       "last_seen_at": "2026-06-26T15:33:32.611858+00:00"
     },
+    "imperial_crusader_breastplate__icon_1181134bf19df165": {
+      "item_uid": "imperial_crusader_breastplate__icon_1181134bf19df165",
+      "display_name": "Sealed Imperial Crusade",
+      "normalized_name": "sealed imperial crusade",
+      "icon_hash": "1181134bf19df165f172f35af158f159715e715e716d71f5f16ff1fbf1fbf1:111",
+      "category": "olympiad",
+      "variant_group": "imperial_crusader_breastplate",
+      "search_query": "Imperial Crusader Breastplate",
+      "source": "search_confirmed",
+      "disambiguation": null,
+      "first_seen_at": "2026-06-27T05:33:06.831992+00:00",
+      "last_seen_at": "2026-06-27T05:34:00.432923+00:00"
+    },
     "imperial_crusader_breastplate__icon_13d1ecd1bb71b9b1": {
       "item_uid": "imperial_crusader_breastplate__icon_13d1ecd1bb71b9b1",
       "display_name": "Sealed Imperial Crusade",
@@ -2384,6 +2640,19 @@
       "disambiguation": null,
       "first_seen_at": "2026-06-26T15:16:40.732700+00:00",
       "last_seen_at": "2026-06-26T15:17:01.199176+00:00"
+    },
+    "imperial_crusader_breastplate__icon_1f1fdf1bbf339b15": {
+      "item_uid": "imperial_crusader_breastplate__icon_1f1fdf1bbf339b15",
+      "display_name": "Sealed Imperial Crusade",
+      "normalized_name": "sealed imperial crusade",
+      "icon_hash": "1f1fdf1bbf339b159b15bf117f153f159f1d7f19771237143f1b8b100110021:111",
+      "category": "olympiad",
+      "variant_group": "imperial_crusader_breastplate",
+      "search_query": "Imperial Crusader Breastplate",
+      "source": "search_confirmed",
+      "disambiguation": null,
+      "first_seen_at": "2026-06-27T10:33:57.140183+00:00",
+      "last_seen_at": "2026-06-27T10:34:51.525393+00:00"
     },
     "imperial_crusader_breastplate__icon_1f3fdf3bbf139b35": {
       "item_uid": "imperial_crusader_breastplate__icon_1f3fdf3bbf139b35",
@@ -2639,7 +2908,7 @@
       "source": "search_confirmed",
       "disambiguation": null,
       "first_seen_at": "2026-06-26T15:16:40.732700+00:00",
-      "last_seen_at": "2026-06-26T15:17:01.199257+00:00"
+      "last_seen_at": "2026-06-27T10:33:57.140183+00:00"
     },
     "imperial_crusader_breastplate__icon_49f19bf1edf362f1": {
       "item_uid": "imperial_crusader_breastplate__icon_49f19bf1edf362f1",
@@ -2795,7 +3064,7 @@
       "source": "search_confirmed",
       "disambiguation": null,
       "first_seen_at": "2026-06-26T14:23:48.193117+00:00",
-      "last_seen_at": "2026-06-26T15:16:40.732700+00:00"
+      "last_seen_at": "2026-06-27T10:33:57.140183+00:00"
     },
     "imperial_crusader_breastplate__icon_813153f19df166f1": {
       "item_uid": "imperial_crusader_breastplate__icon_813153f19df166f1",
@@ -2822,6 +3091,19 @@
       "disambiguation": "search_only",
       "first_seen_at": "2026-06-26T07:11:26.766575+00:00",
       "last_seen_at": "2026-06-26T07:12:16.903026+00:00"
+    },
+    "imperial_crusader_breastplate__icon_8450011c0314df1e": {
+      "item_uid": "imperial_crusader_breastplate__icon_8450011c0314df1e",
+      "display_name": "Imperial Crusader Breas",
+      "normalized_name": "imperial crusader breas",
+      "icon_hash": "8450011c0314df1ebf16cf138f15af159f15af35e715c716cb1fcf13bf1fff3:111",
+      "category": "olympiad",
+      "variant_group": "imperial_crusader_breastplate",
+      "search_query": "Imperial Crusader Breastplate",
+      "source": "search_confirmed",
+      "disambiguation": null,
+      "first_seen_at": "2026-06-27T05:33:06.831992+00:00",
+      "last_seen_at": "2026-06-27T05:34:00.433031+00:00"
     },
     "imperial_crusader_breastplate__icon_93e237e25be2c5e2": {
       "item_uid": "imperial_crusader_breastplate__icon_93e237e25be2c5e2",
@@ -2873,7 +3155,7 @@
       "source": "search_confirmed",
       "disambiguation": null,
       "first_seen_at": "2026-06-26T15:33:01.841937+00:00",
-      "last_seen_at": "2026-06-26T15:33:32.611722+00:00"
+      "last_seen_at": "2026-06-27T05:33:06.831992+00:00"
     },
     "imperial_crusader_breastplate__icon_bf1ecf1bbf1b1f15": {
       "item_uid": "imperial_crusader_breastplate__icon_bf1ecf1bbf1b1f15",
@@ -2916,7 +3198,7 @@
     },
     "recipe_draconic_bow_60": {
       "item_uid": "recipe_draconic_bow_60",
-      "display_name": "Recipe: Draconic Bow (60%)",
+      "display_name": "Recipe: Draconic Bow (6",
       "normalized_name": "recipe: black ore earri",
       "icon_hash": "e0f12cf185f159f159f15bf15bf153f153f1a371eb71d6f15cf129b100114011:112",
       "category": "currency",
@@ -2925,7 +3207,7 @@
       "source": "search_confirmed",
       "disambiguation": null,
       "first_seen_at": "2026-06-26T15:30:21.161331+00:00",
-      "last_seen_at": "2026-06-26T15:30:21.161331+00:00",
+      "last_seen_at": "2026-06-27T10:33:57.140183+00:00",
       "icon_aliases": [
         {
           "icon_hash": "803160710df385f159f159f15bf35bf353f373f1e371a37356f15cf35b310011:112",
@@ -2974,6 +3256,22 @@
           "last_seen_at": "2026-06-26T15:30:21.161331+00:00",
           "match_method": "search_confirmed",
           "distance_to_canonical": 91
+        },
+        {
+          "icon_hash": "21b1de7185f181f119f159f15bf15371537133f16b71a3f106f1e9f126110011:111",
+          "source": "search_confirmed",
+          "first_seen_at": "2026-06-27T05:33:06.831992+00:00",
+          "last_seen_at": "2026-06-27T05:33:06.831992+00:00",
+          "match_method": "search_confirmed",
+          "distance_to_canonical": 38
+        },
+        {
+          "icon_hash": "d87185f181f339f159f15bf15bf1537133f16171ab7196f10cf1eab100110021:111",
+          "source": "search_confirmed",
+          "first_seen_at": "2026-06-27T10:33:57.140183+00:00",
+          "last_seen_at": "2026-06-27T10:33:57.140183+00:00",
+          "match_method": "search_confirmed",
+          "distance_to_canonical": 29
         }
       ]
     },
@@ -3029,6 +3327,19 @@
       "first_seen_at": "2026-06-26T15:16:40.732700+00:00",
       "last_seen_at": "2026-06-26T15:17:25.527360+00:00"
     },
+    "top_grade_life_stone__icon_43316bf12bf379f1": {
+      "item_uid": "top_grade_life_stone__icon_43316bf12bf379f1",
+      "display_name": "Top-grade Life Stone",
+      "normalized_name": "top-grade life stone",
+      "icon_hash": "43316bf12bf379f15bf15b715bf156f175b14cf14f7135f17bf18ab120110021:111",
+      "category": "profit",
+      "variant_group": "top_grade_life_stone",
+      "search_query": "Top-Grade Life Stone",
+      "source": "search_confirmed",
+      "disambiguation": null,
+      "first_seen_at": "2026-06-27T10:33:57.140183+00:00",
+      "last_seen_at": "2026-06-27T10:35:15.294813+00:00"
+    },
     "top_grade_life_stone__icon_476556e573657365": {
       "item_uid": "top_grade_life_stone__icon_476556e573657365",
       "display_name": "Top-grade Life Stone",
@@ -3066,7 +3377,7 @@
       "source": "search_confirmed",
       "disambiguation": null,
       "first_seen_at": "2026-06-26T15:33:01.841937+00:00",
-      "last_seen_at": "2026-06-26T15:33:55.860657+00:00"
+      "last_seen_at": "2026-06-27T05:33:06.831992+00:00"
     },
     "top_grade_life_stone__icon_a975466557e57365": {
       "item_uid": "top_grade_life_stone__icon_a975466557e57365",

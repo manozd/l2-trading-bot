@@ -108,11 +108,9 @@ class SearchResultSink:
         priced = sum(1 for r in self._results if r.price_adena is not None)
         print(
             f"[search] done — {priced}/{len(self._results)} with prices\n"
-            f"  JSONL:  {self.jsonl_path.resolve()}\n"
-            f"  CSV:    {self.validate_csv.resolve()}\n"
-            f"  Log:    {self.validate_log.resolve()}\n"
-            f"  JSON:   {self.min_json.resolve()}\n"
-            f"  MinCSV: {self.min_csv.resolve()}",
+            f"  Raw JSONL (debug): {self.jsonl_path.resolve()}\n"
+            f"  Validate CSV (debug): {self.validate_csv.resolve()}\n"
+            f"  Trusted rollup + prices: automatic unless --no-post-run",
             flush=True,
         )
 

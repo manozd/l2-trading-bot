@@ -17,6 +17,7 @@ from market.truncated_storage import (
     prepare_bulk_row,
     save_truncated_store,
 )
+from market.post_run import run_post_m1_hooks
 
 
 class BulkScanner:
@@ -112,6 +113,18 @@ class BulkScanner:
             f"[bulk] observations: {total} rows → {cfg.out_jsonl.resolve()}",
             flush=True,
         )
+
+        if cfg.post_run_rollup and not cfg.dry_run and total > 0:
+            try:
+                run_post_m1_hooks(
+                    bulk_path=cfg.out_jsonl,
+                    bulk_resolved_path=cfg.bulk_resolved_jsonl,
+                    search_prices_path=cfg.search_prices_jsonl,
+                    record_aliases=cfg.record_resolve_aliases,
+                )
+            except Exception as exc:
+                print(f"[post-run] bulk rollup failed: {exc}", flush=True)
+
         return total
 
     @staticmethod

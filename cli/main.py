@@ -39,16 +39,17 @@ from market.resolve_bulk import (
     resolve_bulk_observations,
     write_resolved_jsonl,
 )
+from market.post_run import run_trusted_prices_rollup, print_trusted_rollup_summary
 from market.trusted_prices import (
     DEFAULT_TRUSTED_CSV,
     DEFAULT_TRUSTED_GROUPED_CSV,
     DEFAULT_TRUSTED_JSONL,
-    aggregate_trusted_prices,
-    aggregate_trusted_prices_grouped,
-    collect_trusted_price_points,
-    write_trusted_csv,
-    write_trusted_grouped_csv,
-    write_trusted_jsonl,
+)
+from market.user_prices import (
+    filter_user_prices,
+    load_user_prices,
+    print_user_prices,
+    print_user_prices_json,
 )
 from market.search_progress import M2_MODE_VERSION, SearchProgressStore, target_config_hash
 from market.items_db import DEFAULT_ITEMS_DB
@@ -80,6 +81,7 @@ def build_parser() -> argparse.ArgumentParser:
     _add_clean_items_db_command(sub)
     _add_repair_items_db_command(sub)
     _add_trusted_prices_command(sub)
+    _add_prices_command(sub)
     return parser
 
 
@@ -134,6 +136,11 @@ def _add_search_command(sub: argparse._SubParsersAction) -> None:
     p.add_argument("--resume", action="store_true")
     p.add_argument("--filter", type=str, default="", dest="name_filter")
     p.add_argument("--delay", type=float, default=10.0)
+    p.add_argument(
+        "--no-post-run",
+        action="store_true",
+        help="Skip automatic trusted-prices rollup after scan",
+    )
     p.set_defaults(func=cmd_search)
 
 
@@ -253,6 +260,16 @@ def _add_bulk_command(sub: argparse._SubParsersAction) -> None:
         type=Path,
         default=DEFAULT_TRUNCATED_ITEMS_PATH,
         help="Registry of truncated item keys (config/truncated_items.json)",
+    )
+    p.add_argument(
+        "--no-post-run",
+        action="store_true",
+        help="Skip resolve-bulk + trusted-prices after crawl",
+    )
+    p.add_argument(
+        "--record-aliases",
+        action="store_true",
+        help="During post-run resolve-bulk, add new icon aliases to catalog",
     )
     p.set_defaults(func=cmd_bulk)
 
@@ -481,6 +498,37 @@ def _add_trusted_prices_command(sub: argparse._SubParsersAction) -> None:
     p.set_defaults(func=cmd_trusted_prices)
 
 
+def _add_prices_command(sub: argparse._SubParsersAction) -> None:
+    p = sub.add_parser(
+        "prices",
+        help="Show decision-grade prices (reads logs/trusted_min_prices_grouped.csv only)",
+    )
+    p.add_argument(
+        "--csv",
+        type=Path,
+        default=DEFAULT_TRUSTED_GROUPED_CSV,
+        help="Grouped trusted prices CSV (default: logs/trusted_min_prices_grouped.csv)",
+    )
+    p.add_argument(
+        "--name",
+        type=str,
+        default="",
+        help="Filter by item name (canonical display name / variant_group)",
+    )
+    p.add_argument(
+        "--fresh",
+        action="store_true",
+        help="Hide stale rows and not-on-market entries",
+    )
+    p.add_argument(
+        "--all-variants",
+        action="store_true",
+        help="Show every icon variant (default: one best row per gear variant_group)",
+    )
+    p.add_argument("--json", action="store_true", help="JSON output with full metadata")
+    p.set_defaults(func=cmd_prices)
+
+
 def _add_test_keys_command(sub: argparse._SubParsersAction) -> None:
     p = sub.add_parser("test-keys", help="Test search box click + type + Enter")
     p.add_argument("--pico-com", type=str, default=DEFAULT_PICO_COM, help=f"Pico serial port (default: {DEFAULT_PICO_COM})")
@@ -614,27 +662,39 @@ def cmd_repair_items_db(ns: argparse.Namespace) -> None:
 
 
 def cmd_trusted_prices(ns: argparse.Namespace) -> None:
-    catalog = VariantCatalog.load(ns.catalog.resolve())
-    points = collect_trusted_price_points(
-        resolved_bulk_path=ns.bulk_resolved.resolve(),
-        search_prices_path=ns.search_prices.resolve(),
+    result = run_trusted_prices_rollup(
+        bulk_resolved_path=ns.bulk_resolved,
+        search_prices_path=ns.search_prices,
+        catalog_path=ns.catalog,
+        out_jsonl=ns.out_jsonl,
+        out_csv=ns.out_csv,
+        out_grouped_csv=ns.out_grouped_csv,
+        write_grouped=not ns.no_grouped,
     )
-    rows = aggregate_trusted_prices(points)
-    write_trusted_jsonl(ns.out_jsonl.resolve(), rows)
-    write_trusted_csv(ns.out_csv.resolve(), rows)
-    print(f"[trusted] {len(rows)} item_uid(s) with trusted prices", flush=True)
-    print(f"  JSONL: {ns.out_jsonl.resolve()}", flush=True)
-    print(f"  CSV:   {ns.out_csv.resolve()}", flush=True)
+    print_trusted_rollup_summary(result, tag="trusted")
     if not ns.no_grouped:
-        grouped = aggregate_trusted_prices_grouped(points, catalog)
-        write_trusted_grouped_csv(ns.out_grouped_csv.resolve(), grouped)
-        fungible_n = sum(1 for r in grouped if r.fungible)
-        print(
-            f"[trusted] {len(grouped)} grouped row(s) "
-            f"({fungible_n} fungible by variant_group)",
-            flush=True,
+        print("  View: python -m cli prices", flush=True)
+
+
+def cmd_prices(ns: argparse.Namespace) -> None:
+    csv_path = ns.csv.resolve()
+    try:
+        rows = load_user_prices(
+            csv_path,
+            all_variants=ns.all_variants,
+            fresh_only=ns.fresh,
         )
-        print(f"  Grouped CSV: {ns.out_grouped_csv.resolve()}", flush=True)
+    except FileNotFoundError:
+        raise SystemExit(
+            f"Grouped trusted prices not found: {csv_path}\n"
+            "Run: python -m cli trusted-prices"
+        ) from None
+
+    rows = filter_user_prices(rows, name_query=ns.name or None)
+    if ns.json:
+        print_user_prices_json(rows)
+        return
+    print_user_prices(rows, grouped_csv=csv_path)
 
 
 def cmd_run(ns: argparse.Namespace) -> None:
@@ -671,6 +731,7 @@ def cmd_search(ns: argparse.Namespace) -> None:
         name_filter=ns.name_filter,
         dry_run=ns.dry_run,
         resume=ns.resume,
+        post_run_rollup=not ns.no_post_run,
     )
     SearchScanner(cfg).run()
 
@@ -707,6 +768,8 @@ def cmd_bulk(ns: argparse.Namespace) -> None:
         aggregate=not ns.no_aggregate,
         include_truncated=ns.include_truncated,
         truncated_items_path=ns.truncated_registry,
+        post_run_rollup=not ns.no_post_run,
+        record_resolve_aliases=ns.record_aliases,
     )
     BulkScanner(cfg).run()
 

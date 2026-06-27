@@ -53,6 +53,8 @@ def collect_bulk_item_names(
         if not include_resolved_names:
             continue
         identity = obs.get("identity") or {}
+        if not identity.get("trusted"):
+            continue
         for field in ("catalog_search_query", "item_name", "display_name"):
             add(identity.get(field))
 

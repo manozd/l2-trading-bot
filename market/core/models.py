@@ -238,6 +238,10 @@ class SearchRunConfig:
     validate_log: Path = field(default_factory=lambda: _LOGS / "market_search_validate.log")
     variant_catalog_path: Path = field(default_factory=lambda: DEFAULT_VARIANT_CATALOG_PATH)
     max_vendor_pages: int = 15
+    post_run_rollup: bool = True
+    bulk_resolved_jsonl: Path = field(
+        default_factory=lambda: _LOGS / "market_all_items_resolved.jsonl"
+    )
 
 
 @dataclass
@@ -259,3 +263,11 @@ class BulkRunConfig:
     out_jsonl: Path = field(default_factory=lambda: _LOGS / "market_all_items.jsonl")
     min_json: Path = field(default_factory=lambda: _LOGS / "market_all_items_min.json")
     min_csv: Path = field(default_factory=lambda: _LOGS / "market_all_items_min.csv")
+    bulk_resolved_jsonl: Path = field(
+        default_factory=lambda: _LOGS / "market_all_items_resolved.jsonl"
+    )
+    search_prices_jsonl: Path = field(
+        default_factory=lambda: _LOGS / "market_search_prices.jsonl"
+    )
+    post_run_rollup: bool = True
+    record_resolve_aliases: bool = False
